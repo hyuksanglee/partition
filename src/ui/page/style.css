@@ -90,14 +90,18 @@ input[type="number"] { width: 68px; text-align: right; }
   display: flex; height: 28px; border-radius: 6px; overflow: hidden; background: var(--track);
 }
 .seg {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden;
+  position: relative; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden;
+  background: color-mix(in srgb, var(--c) 30%, var(--surface));
   transition: width 60ms linear;
 }
+.seg .fill { position: absolute; left: 0; top: 0; bottom: 0; transition: width 120ms ease-out; }
+.seg span { position: relative; text-shadow: 0 0 3px var(--surface); }
 .seg + .seg { border-left: 1px solid var(--surface); }
 .seg.selected { box-shadow: inset 0 0 0 2px var(--text); }
 .seg.free {
   color: var(--muted);
+  --c: transparent;
   background: repeating-linear-gradient(135deg, transparent 0 6px, rgb(127 127 127 / 0.12) 6px 12px);
 }
 .range-track { position: relative; height: 6px; }

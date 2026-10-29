@@ -103,15 +103,16 @@ function renderBar() {
   const mine = draft ?? sel.budgets[win] ?? 0;
   const free = Math.max(0, 100 - othersTotal - mine);
 
-  const seg = (label, value, color, cls = '') =>
-    el('div', { className: `seg ${cls}`, textContent: value >= 8 ? label : '', title: `${label}`, style: `width:${value}%;background:${color}` });
-  const segs = others.map((p) => seg(`${p.name} ${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path)));
-  if (mine > 0) segs.push(seg(`${sel.name} ${pp(mine)}`, mine, colors.get(sel.path), 'selected'));
-  if (free > 0) {
-    const f = seg(`${tr('bar.free')} ${pp(free)}`, free, '', 'free');
-    f.style.background = '';
-    segs.push(f);
-  }
+  // 할당한 범위는 연하게, 그중 쓴 만큼은 진하게 채운다.
+  const used = (p) => p.check.windows[win].used;
+  const seg = (label, value, color, usedPp, cls = '') => {
+    const fill = el('div', { className: 'fill', style: `width:${value > 0 ? Math.min(100, (usedPp / value) * 100) : 0}%;background:${color}` });
+    const text = el('span', { textContent: value >= 8 ? label : '' });
+    return el('div', { className: `seg ${cls}`, title: label, style: `width:${value}%;--c:${color}` }, [fill, text]);
+  };
+  const segs = others.map((p) => seg(`${p.name} ${pp(used(p))}/${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path), used(p)));
+  if (mine > 0) segs.push(seg(`${sel.name} ${pp(used(sel))}/${pp(mine)}`, mine, colors.get(sel.path), used(sel), 'selected'));
+  if (free > 0) segs.push(el('div', { className: 'seg free', title: tr('bar.free'), style: `width:${free}%` }, [el('span', { textContent: free >= 8 ? `${tr('bar.free')} ${pp(free)}` : '' })]));
   $('alloc-bar').replaceChildren(...segs);
   $('bar-total').textContent = tr('bar.allocated', { n: pp(othersTotal + mine) });
 
@@ -120,7 +121,7 @@ function renderBar() {
   mark.style.width = `${100 - othersTotal}%`;
 
   const legend = [...others, ...(mine > 0 ? [sel] : [])].map((p) =>
-    el('span', { textContent: `${p.name} ${ppu(p === sel ? mine : p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
+    el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p === sel ? mine : p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
   );
   legend.push(el('span', { textContent: `${tr('bar.free')} ${ppu(free)}`, style: '--c:var(--track)' }));
   $('legend').replaceChildren(...legend);
