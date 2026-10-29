@@ -131,7 +131,7 @@ Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node
 
 | Command | What it does |
 | --- | --- |
-| `/partition:ui` | Open the settings window: the whole limit as one bar, each project's share, how much is left to give. Drag to change, let go to save. |
+| `/partition:ui` | Open the settings window: the whole limit as one bar, each project's share, how much is left to give. Drag to change, then press Save. |
 | `/partition:status` | This project's usage and budget, other projects, unattributed usage, reset times. |
 | `/partition:budget <1-100 \| 0> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. `0` (or `off`) removes the limit. |
 | `/partition:setup` | Connect the status line. Shows the change first. |

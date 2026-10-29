@@ -166,3 +166,6 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
   background: var(--text); color: var(--bg); padding: 6px 14px; border-radius: 8px; font-size: 13px;
   max-width: calc(100% - 32px);
 }
+
+.save-row { gap: 12px; }
+.save-row[hidden] { display: none; }

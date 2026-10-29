@@ -7,7 +7,7 @@ const TEXT = {
     'tab.budget': '예산', 'tab.rules': '규칙', 'tab.connection': '연결',
     'window.fiveHour': '5시간', 'window.sevenDay': '주간',
     'bar.title': '한도 전체 100%p', 'bar.free': '미할당', 'bar.other': '회색: 기타 사용', 'bar.allocated': '할당 {n}%p',
-    'budget.clear': '할당 해제', 'budget.range': '설정 가능 0–{max}%p (0 = 제한 없음)', 'budget.none': '할당 없음',
+    'budget.clear': '할당 해제', 'budget.save': '저장', 'budget.cancel': '취소', 'budget.unsaved': '저장하지 않은 변경', 'budget.range': '설정 가능 0–{max}%p (0 = 제한 없음)', 'budget.none': '할당 없음',
     'current': '현재',
     'stats.used': '이 창에서 쓴 양', 'stats.budget': '예산', 'stats.total': '계정 전체 사용률',
     'stats.others': '다른 프로젝트', 'stats.unattributed': '미귀속 (웹·다른 기기 등)', 'stats.before': '기타 (Partition 적용 전)',
@@ -29,7 +29,7 @@ const TEXT = {
     'tab.budget': 'Budget', 'tab.rules': 'Rules', 'tab.connection': 'Connection',
     'window.fiveHour': '5-hour', 'window.sevenDay': 'Weekly',
     'bar.title': 'Whole limit 100pp', 'bar.free': 'Unallocated', 'bar.other': 'gray: other usage', 'bar.allocated': '{n}pp allocated',
-    'budget.clear': 'Clear', 'budget.range': 'Allowed 0–{max}pp (0 = no limit)', 'budget.none': 'No budget',
+    'budget.clear': 'Clear', 'budget.save': 'Save', 'budget.cancel': 'Cancel', 'budget.unsaved': 'Unsaved change', 'budget.range': 'Allowed 0–{max}pp (0 = no limit)', 'budget.none': 'No budget',
     'current': 'current',
     'stats.used': 'Used in this window', 'stats.budget': 'Budget', 'stats.total': 'Account usage',
     'stats.others': 'Other projects', 'stats.unattributed': 'Unattributed (web, other devices…)', 'stats.before': 'Other (before Partition)',
@@ -156,11 +156,13 @@ function renderBudget() {
 
   const range = sel.ranges[win];
   const value = sel.budgets[win];
+  const shown = draft ?? value;
   const slider = $('budget-slider');
   slider.max = String(range.max);
-  slider.value = String(value ?? 0);
+  slider.value = String(shown ?? 0);
   $('budget-number').max = String(range.max);
-  $('budget-number').value = value == null ? '' : String(value);
+  $('budget-number').value = shown == null ? '' : String(shown);
+  renderSaveRow();
   $('budget-number').placeholder = '—';
   $('range-text').textContent = value == null ? `${tr('budget.none')} · ${tr('budget.range', { max: pp(range.max) })}` : tr('budget.range', { max: pp(range.max) });
   $('budget-clear').hidden = value == null;
@@ -187,6 +189,14 @@ function renderBudget() {
       : [[tr('stats.noData'), '']],
   );
   renderBar();
+}
+
+/** 저장하지 않은 값이 있을 때만 저장·취소 버튼을 보인다. */
+function isDirty() {
+  return draft != null && draft !== (project().budgets[win] ?? 0);
+}
+function renderSaveRow() {
+  $('save-row').hidden = !isDirty();
 }
 
 async function saveBudget(value) {
@@ -256,28 +266,46 @@ function bind() {
       for (const p of document.querySelectorAll('[role=tabpanel]')) p.hidden = p.id !== `tab-${tab.dataset.tab}`;
     });
   }
+  // 창이나 프로젝트를 바꾸면 저장하지 않은 값은 버린다.
   for (const b of document.querySelectorAll('#window-switch button')) {
     b.addEventListener('click', () => {
       win = b.dataset.window;
+      draft = null;
       render();
     });
   }
   $('project-select').addEventListener('change', (e) => {
     selected = e.target.value;
+    draft = null;
     render();
   });
-  // 움직이는 동안 막대에 바로 반영, 손 떼면 저장.
-  $('budget-slider').addEventListener('input', (e) => {
-    draft = Number(e.target.value);
-    $('budget-number').value = String(draft);
+  // 움직이는 동안 막대에 바로 반영하고, 저장은 [저장] 버튼을 눌러야 한다.
+  const edit = (v) => {
+    draft = v;
     renderBar();
+    renderSaveRow();
+  };
+  $('budget-slider').addEventListener('input', (e) => {
+    $('budget-number').value = e.target.value;
+    edit(Number(e.target.value));
   });
-  $('budget-slider').addEventListener('change', (e) => saveBudget(Number(e.target.value)));
-  $('budget-number').addEventListener('change', (e) => {
+  $('budget-number').addEventListener('input', (e) => {
     const v = e.target.value.trim();
-    saveBudget(v === '' ? null : Number(v));
+    const n = v === '' ? 0 : Number(v);
+    if (!Number.isFinite(n)) return;
+    $('budget-slider').value = String(n);
+    edit(n);
   });
-  $('budget-clear').addEventListener('click', () => saveBudget(null));
+  $('budget-clear').addEventListener('click', () => {
+    $('budget-slider').value = '0';
+    $('budget-number').value = '';
+    edit(0);
+  });
+  $('budget-save').addEventListener('click', () => saveBudget(draft));
+  $('budget-cancel').addEventListener('click', () => {
+    draft = null;
+    render();
+  });
 
   $('rule-warn').addEventListener('change', (e) => saveRules({ warnAt: Number(e.target.value) / 100 }));
   $('rule-margin').addEventListener('change', (e) => saveRules({ wrapMarginPp: Number(e.target.value) }));
