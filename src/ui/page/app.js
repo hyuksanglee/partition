@@ -101,20 +101,24 @@ function renderBar() {
   const others = snap.projects.filter((p) => p.path !== sel.path && p.budgets[win] != null);
   const othersTotal = others.reduce((a, p) => a + p.budgets[win], 0);
   const mine = draft ?? sel.budgets[win] ?? 0;
-  const free = Math.max(0, 100 - othersTotal - mine);
+  const used = (p) => p.check.windows[win].used;
+  // 고른 프로젝트는 예산이 없거나 넘게 썼어도 자기 사용량만큼은 자기 칸으로 그린다.
+  // (예산이 없을 때 기타로 그리면, 줄 수 있는 범위 계산과 회색 칸이 어긋난다.)
+  const selWidth = Math.max(mine, used(sel));
+  const free = Math.max(0, 100 - othersTotal - selWidth);
 
   // 할당한 범위는 연하게, 그중 쓴 만큼은 진하게 채운다.
-  const used = (p) => p.check.windows[win].used;
   const seg = (label, value, color, usedPp, cls = '') => {
     const fill = el('div', { className: 'fill', style: `width:${value > 0 ? Math.min(100, (usedPp / value) * 100) : 0}%;background:${color}` });
     const text = el('span', { textContent: value >= 8 ? label : '' });
     return el('div', { className: `seg ${cls}`, title: label, style: `width:${value}%;--c:${color}` }, [fill, text]);
   };
   const segs = others.map((p) => seg(`${p.name} ${pp(used(p))}/${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path), used(p)));
-  if (mine > 0) segs.push(seg(`${sel.name} ${pp(used(sel))}/${pp(mine)}`, mine, colors.get(sel.path), used(sel), 'selected'));
-  // 예산이 없는 사용(기타: 적용 전·미귀속·예산 없는 프로젝트)은 미할당 칸 안에 회색으로 채운다.
+  const selLabel = mine > 0 ? `${sel.name} ${pp(used(sel))}/${pp(mine)}` : `${sel.name} ${pp(used(sel))}`;
+  if (selWidth > 0) segs.push(seg(selLabel, selWidth, colors.get(sel.path), used(sel), 'selected'));
+  // 예산이 없는 사용(기타: 적용 전·미귀속·예산 없는 다른 프로젝트)은 미할당 칸 안에 회색으로 채운다.
   const totalPct = sel.check.windows[win].totalPct;
-  const budgetedUsed = [...others, sel].filter((p) => p === sel ? mine > 0 : true).reduce((a, p) => a + used(p), 0);
+  const budgetedUsed = [...others, sel].reduce((a, p) => a + used(p), 0);
   const otherUsed = Math.max(0, totalPct - budgetedUsed);
   if (free > 0) {
     const label = `${tr('bar.free')} ${pp(otherUsed)}/${pp(free)}`;
@@ -129,9 +133,13 @@ function renderBar() {
   mark.style.left = `${othersTotal}%`;
   mark.style.width = `${Math.min(100 - othersTotal, sel.ranges[win].max)}%`;
 
-  const legend = [...others, ...(mine > 0 ? [sel] : [])].map((p) =>
-    el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p === sel ? mine : p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
+  const legend = others.map((p) =>
+    el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
   );
+  if (selWidth > 0) {
+    const text = mine > 0 ? `${sel.name} ${pp(used(sel))}/${ppu(mine)}` : `${sel.name} ${ppu(used(sel))} (${tr('budget.none')})`;
+    legend.push(el('span', { textContent: text, style: `--c:${colors.get(sel.path)}` }));
+  }
   legend.push(el('span', { textContent: `${tr('bar.free')} ${pp(otherUsed)}/${ppu(free)} (${tr('bar.other')})`, style: '--c:var(--other)' }));
   $('legend').replaceChildren(...legend);
 }
