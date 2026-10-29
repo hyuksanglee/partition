@@ -89,7 +89,7 @@ Honest, not exact:
 - **It is a self-imposed limit.** Anthropic's servers own the real limits. Partition counts on your machine and stops itself.
 - **It can overshoot by one step.** It acts between responses and tool calls, not in the middle of one.
 - **The token weights are an assumption.** Input 1, cache write 1.25, cache read 0.1, output 5, borrowed from API price ratios. Change them in `~/.partition/config.json`.
-- **Usage it cannot place is shown as such.** Claude on the web or another device shows up as *unattributed*; usage from before Partition started counting, as *before Partition*.
+- **Usage it cannot place is shown as such.** Claude on the web or another device shows up as *unattributed*; usage from before Partition started counting, as *other*.
 - **When it is unsure, it lets you through.** No data yet, a window that has reset, or an error in Partition never blocks you. Neither do Partition's own commands.
 
 ## The status line

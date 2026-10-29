@@ -35,14 +35,14 @@ test('한국어: 막대·단계·내역, 라벨 정렬', () => {
   assert.match(text, /5시간 · 리셋/);
   assert.match(text, /이 프로젝트 {2}█{20}░{4} {2}50 \/ 60%p {2}⚠ 경고/);
   assert.match(text, /계정 전체 {4}█{11}░{13} {2}45%/);
-  assert.match(text, /├ 적용 전 {2}37%p\n {15}└ A {8}50%p\n/);
+  assert.match(text, /├ A {5}50%p\n {15}└ 기타 {2}37%p\n/);
   assert.doesNotMatch(text, /미귀속/, '0이면 숨긴다');
 });
 
 test('다른 프로젝트는 이름으로, 미귀속은 0보다 크면 보인다', () => {
   const busy = { ...state, windows: { ...state.windows, fiveHour: { ...state.windows.fiveHour, byProject: { [proj]: 5, '/w/small': 1, '/w/api': 3, '/w/zero': 0 }, unattributed: 1.5 } } };
   const text = status(proj, { config, state: busy, lang: 'ko', nowSec }).text;
-  assert.match(text, /├ A {10}5%p\n {15}├ api {8}3%p\n {15}├ small {6}1%p\n {15}└ 미귀속 {3}1\.5%p/, '지금 프로젝트 먼저, 나머지는 많이 쓴 순');
+  assert.match(text, /├ A {9}5%p\n {15}├ api {7}3%p\n {15}├ small {5}1%p\n {15}├ 미귀속 {2}1\.5%p\n {15}└ 기타 {5}37%p/, '지금 프로젝트 먼저, 나머지는 많이 쓴 순, 기타는 맨 끝');
   assert.doesNotMatch(text, /zero/);
   assert.match(text, /이 프로젝트 {2}1%p · 예산 없음/);
 });

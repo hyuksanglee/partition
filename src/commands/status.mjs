@@ -73,17 +73,18 @@ export function status(project, { config, state, lang, nowSec }) {
     );
     lines.push(`  ${pad(labels[1], labelWidth)}${bar(w.totalPct / 100)}  ${fmtPp(w.totalPct)}%`);
     // 계정 사용률의 내역. 한 줄로 쓰면 좁은 창에서 줄이 넘어가 정렬이 깨져서 항목마다 한 줄씩.
-    // 프로젝트는 이름으로, 지금 프로젝트를 먼저, 나머지는 많이 쓴 순. 0인 프로젝트와 미귀속은 숨긴다.
+    // 프로젝트는 이름으로, 지금 프로젝트를 먼저, 나머지는 많이 쓴 순. 미귀속, 맨 끝에 기타(Partition 적용 전 사용).
+    // 0인 프로젝트·미귀속·기타는 숨긴다(지금 프로젝트는 항상 보인다).
     const byProject = state.windows[key]?.byProject ?? {};
     const others = Object.entries(byProject)
       .filter(([p, v]) => p !== project && v > 0)
       .sort((a, b) => b[1] - a[1]);
     const names = displayNames([project, ...others.map(([p]) => p)]);
     const rows = [
-      [t(lang, 'status.before'), w.beforeTracking],
       [names.get(project), w.used],
       ...others.map(([p, v]) => [names.get(p), v]),
       ...(w.unattributed > 0 ? [[t(lang, 'status.unattributed'), w.unattributed]] : []),
+      ...(w.beforeTracking > 0 ? [[t(lang, 'status.before'), w.beforeTracking]] : []),
     ];
     const nameWidth = Math.max(...rows.map(([name]) => displayWidth(String(name)))) + 2;
     const numWidth = Math.max(...rows.map(([, v]) => fmtPp(Number(v)).length));
