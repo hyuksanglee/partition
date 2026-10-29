@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { useTempHome } from '../helpers.mjs';
-import { bar, displayWidth, status } from '../../src/commands/status.mjs';
+import { bar, displayNames, displayWidth, status } from '../../src/commands/status.mjs';
 import { defaultConfig } from '../../src/store/config.mjs';
 import { startTracking } from '../../src/core/window.mjs';
 
@@ -35,14 +35,15 @@ test('한국어: 막대·단계·내역, 라벨 정렬', () => {
   assert.match(text, /5시간 · 리셋/);
   assert.match(text, /이 프로젝트 {2}█{20}░{4} {2}50 \/ 60%p {2}⚠ 경고/);
   assert.match(text, /계정 전체 {4}█{11}░{13} {2}45%/);
-  assert.match(text, /├ 추적 전 {6}37%p\n {15}└ 이 프로젝트 {2}50%p\n/);
-  assert.doesNotMatch(text, /다른 프로젝트|미귀속/, '0이면 숨긴다');
+  assert.match(text, /├ 적용 전 {2}37%p\n {15}└ A {8}50%p\n/);
+  assert.doesNotMatch(text, /미귀속/, '0이면 숨긴다');
 });
 
-test('다른 프로젝트·미귀속은 0보다 크면 보인다', () => {
-  const busy = { ...state, windows: { ...state.windows, fiveHour: { ...state.windows.fiveHour, byProject: { [proj]: 5, other: 3 }, unattributed: 1.5 } } };
+test('다른 프로젝트는 이름으로, 미귀속은 0보다 크면 보인다', () => {
+  const busy = { ...state, windows: { ...state.windows, fiveHour: { ...state.windows.fiveHour, byProject: { [proj]: 5, '/w/small': 1, '/w/api': 3, '/w/zero': 0 }, unattributed: 1.5 } } };
   const text = status(proj, { config, state: busy, lang: 'ko', nowSec }).text;
-  assert.match(text, /├ 다른 프로젝트 {4}3%p\n {15}└ 미귀속 {9}1\.5%p/);
+  assert.match(text, /├ A {10}5%p\n {15}├ api {8}3%p\n {15}├ small {6}1%p\n {15}└ 미귀속 {3}1\.5%p/, '지금 프로젝트 먼저, 나머지는 많이 쓴 순');
+  assert.doesNotMatch(text, /zero/);
   assert.match(text, /이 프로젝트 {2}1%p · 예산 없음/);
 });
 
@@ -56,4 +57,9 @@ test('영어', () => {
 test('값이 없으면 안내만', () => {
   const text = status(proj, { config, state: { ...state, windows: {} }, lang: 'ko', nowSec }).text;
   assert.match(text, /5시간: 아직 사용률 값이 없어요/);
+});
+
+test('이름이 겹치면 상위 폴더까지 붙인다', () => {
+  const names = displayNames(['/home/me/app', '/work/app', '/work/api']);
+  assert.deepEqual([...names.values()], ['me/app', 'work/app', 'api']);
 });

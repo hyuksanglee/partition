@@ -1,6 +1,6 @@
 {
   "name": "partition",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "Per-project budgets for your Claude plan's 5-hour and weekly usage limits.",
   "type": "module",
