@@ -108,7 +108,8 @@ input[type="number"] { width: 68px; text-align: right; }
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   border: 2px solid var(--text); border-radius: inherit;
 }
-.seg.free .fill { background: var(--other); }
+/* 기타 사용은 미할당 칸의 오른쪽 끝부터 채운다(프로젝트 몫과 붙어 보이지 않게) */
+.seg.free .fill { background: var(--other); left: auto; right: 0; }
 .seg.free {
   color: var(--muted);
   --c: transparent;
