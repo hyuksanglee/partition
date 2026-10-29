@@ -162,10 +162,18 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .switch:checked::after { left: 16px; }
 
 .toast {
-  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%);
   background: var(--text); color: var(--bg); padding: 6px 14px; border-radius: 8px; font-size: 13px;
   max-width: calc(100% - 32px);
 }
 
-.save-row { gap: 12px; }
-.save-row[hidden] { display: none; }
+/* 저장 바: 창 아래에 고정 */
+main { padding-bottom: 72px; }
+.save-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 10px 20px; background: var(--surface); border-top: 1px solid var(--border);
+}
+.save-bar[hidden] { display: none; }
+.save-bar #save-status { margin-right: auto; }
+button.link:disabled { color: var(--muted); cursor: default; opacity: 0.5; }

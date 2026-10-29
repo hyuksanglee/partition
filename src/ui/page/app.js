@@ -195,8 +195,12 @@ function renderBudget() {
 function isDirty() {
   return draft != null && draft !== (project().budgets[win] ?? 0);
 }
+/** 창 아래 고정 바: 예산 탭에서만 보이고, 바꾼 값이 없으면 버튼은 꺼 둔다. */
 function renderSaveRow() {
-  $('save-row').hidden = !isDirty();
+  const dirty = isDirty();
+  $('save-status').textContent = dirty ? tr('budget.unsaved') : '';
+  $('budget-save').disabled = !dirty;
+  $('budget-cancel').disabled = !dirty;
 }
 
 async function saveBudget(value) {
@@ -264,6 +268,7 @@ function bind() {
     tab.addEventListener('click', () => {
       for (const t of document.querySelectorAll('nav button')) t.setAttribute('aria-selected', String(t === tab));
       for (const p of document.querySelectorAll('[role=tabpanel]')) p.hidden = p.id !== `tab-${tab.dataset.tab}`;
+      $('save-bar').hidden = tab.dataset.tab !== 'budget';
     });
   }
   // 창이나 프로젝트를 바꾸면 저장하지 않은 값은 버린다.
