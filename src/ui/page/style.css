@@ -18,6 +18,7 @@
   --seg-4: #b38b59;
   --seg-5: #9a7fb5;
   --seg-6: #c46686;
+  --other: #a8a49a; /* 예산 없는 사용(기타) */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -32,6 +33,7 @@
     --warn: #e0a84a;
     --danger: #e8705f;
     --ok: #9cb98a;
+    --other: #6e6b64;
     color-scheme: dark;
   }
 }
@@ -106,6 +108,7 @@ input[type="number"] { width: 68px; text-align: right; }
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   border: 2px solid var(--text); border-radius: inherit;
 }
+.seg.free .fill { background: var(--other); }
 .seg.free {
   color: var(--muted);
   --c: transparent;

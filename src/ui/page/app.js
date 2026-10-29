@@ -6,7 +6,7 @@ const TEXT = {
   ko: {
     'tab.budget': '예산', 'tab.rules': '규칙', 'tab.connection': '연결',
     'window.fiveHour': '5시간', 'window.sevenDay': '주간',
-    'bar.title': '한도 전체 100%p', 'bar.free': '미할당', 'bar.allocated': '할당 {n}%p',
+    'bar.title': '한도 전체 100%p', 'bar.free': '미할당', 'bar.other': '회색: 기타 사용', 'bar.allocated': '할당 {n}%p',
     'budget.clear': '할당 해제', 'budget.range': '설정 가능 0–{max}%p', 'budget.none': '할당 없음',
     'current': '현재',
     'stats.used': '이 창에서 쓴 양', 'stats.budget': '예산', 'stats.total': '계정 전체 사용률',
@@ -28,7 +28,7 @@ const TEXT = {
   en: {
     'tab.budget': 'Budget', 'tab.rules': 'Rules', 'tab.connection': 'Connection',
     'window.fiveHour': '5-hour', 'window.sevenDay': 'Weekly',
-    'bar.title': 'Whole limit 100pp', 'bar.free': 'Unallocated', 'bar.allocated': '{n}pp allocated',
+    'bar.title': 'Whole limit 100pp', 'bar.free': 'Unallocated', 'bar.other': 'gray: other usage', 'bar.allocated': '{n}pp allocated',
     'budget.clear': 'Clear', 'budget.range': 'Allowed 0–{max}pp', 'budget.none': 'No budget',
     'current': 'current',
     'stats.used': 'Used in this window', 'stats.budget': 'Budget', 'stats.total': 'Account usage',
@@ -112,7 +112,15 @@ function renderBar() {
   };
   const segs = others.map((p) => seg(`${p.name} ${pp(used(p))}/${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path), used(p)));
   if (mine > 0) segs.push(seg(`${sel.name} ${pp(used(sel))}/${pp(mine)}`, mine, colors.get(sel.path), used(sel), 'selected'));
-  if (free > 0) segs.push(el('div', { className: 'seg free', title: tr('bar.free'), style: `width:${free}%` }, [el('span', { textContent: free >= 8 ? `${tr('bar.free')} ${pp(free)}` : '' })]));
+  // 예산이 없는 사용(기타: 적용 전·미귀속·예산 없는 프로젝트)은 미할당 칸 안에 회색으로 채운다.
+  const totalPct = sel.check.windows[win].totalPct;
+  const budgetedUsed = [...others, sel].filter((p) => p === sel ? mine > 0 : true).reduce((a, p) => a + used(p), 0);
+  const otherUsed = Math.max(0, totalPct - budgetedUsed);
+  if (free > 0) {
+    const label = `${tr('bar.free')} ${pp(otherUsed)}/${pp(free)}`;
+    const fill = el('div', { className: 'fill', style: `width:${Math.min(100, (otherUsed / free) * 100)}%` });
+    segs.push(el('div', { className: 'seg free', title: label, style: `width:${free}%` }, [fill, el('span', { textContent: free >= 8 ? label : '' })]));
+  }
   $('alloc-bar').replaceChildren(...segs);
   $('bar-total').textContent = tr('bar.allocated', { n: pp(othersTotal + mine) });
 
@@ -123,7 +131,7 @@ function renderBar() {
   const legend = [...others, ...(mine > 0 ? [sel] : [])].map((p) =>
     el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p === sel ? mine : p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
   );
-  legend.push(el('span', { textContent: `${tr('bar.free')} ${ppu(free)}`, style: '--c:var(--track)' }));
+  legend.push(el('span', { textContent: `${tr('bar.free')} ${pp(otherUsed)}/${ppu(free)} (${tr('bar.other')})`, style: '--c:var(--other)' }));
   $('legend').replaceChildren(...legend);
 }
 
