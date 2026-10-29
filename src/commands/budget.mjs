@@ -1,4 +1,6 @@
-import { allowedRange, setBudget, validateBudget } from '../core/allocation.mjs';
+import { allowedRange, otherUsage, setBudget, validateBudget } from '../core/allocation.mjs';
+import { isExpired } from '../core/window.mjs';
+import { loadState } from '../store/state.mjs';
 import { updateConfig } from '../store/config.mjs';
 import { projectName } from '../project.mjs';
 import { t } from '../messages.mjs';
@@ -33,8 +35,10 @@ export function setProjectBudget(project, window, value, lang) {
   let error = null;
   let max = 0;
   updateConfig((c) => {
-    max = allowedRange(c.budgets, window, project).max;
-    if (value != null) error = validateBudget(c.budgets, window, project, value);
+    const win = loadState().windows[window];
+    const other = otherUsage(c.budgets, window, isExpired(win, Date.now() / 1000) ? undefined : win, project);
+    max = allowedRange(c.budgets, window, project, other).max;
+    if (value != null) error = validateBudget(c.budgets, window, project, value, other);
     return error ? c : { ...c, budgets: setBudget(c.budgets, window, project, value) };
   });
   if (error) return { ok: false, text: t(lang, /** @type {any} */ (`error.${error}`), { max }), data: { max, value } };

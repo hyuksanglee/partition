@@ -3,8 +3,8 @@
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { WINDOW_KEYS } from '../core/window.mjs';
-import { allowedRange } from '../core/allocation.mjs';
+import { WINDOW_KEYS, isExpired } from '../core/window.mjs';
+import { allowedRange, otherUsage } from '../core/allocation.mjs';
 import { loadConfig } from '../store/config.mjs';
 import { loadInstall, loadState } from '../store/state.mjs';
 import { projectName } from '../project.mjs';
@@ -34,11 +34,13 @@ export function snapshot(project) {
   const nowSec = Date.now() / 1000;
   const known = new Set([project, ...Object.keys(config.budgets)]);
   for (const key of WINDOW_KEYS) for (const p of Object.keys(state.windows[key]?.byProject ?? {})) known.add(p);
+  /** @param {import('../core/window.mjs').WindowKey} k */
+  const live = (k) => (isExpired(state.windows[k], nowSec) ? undefined : state.windows[k]);
   const projects = [...known].map((p) => ({
     path: p,
     name: projectName(p),
     budgets: config.budgets[p] ?? {},
-    ranges: Object.fromEntries(WINDOW_KEYS.map((k) => [k, allowedRange(config.budgets, k, p)])),
+    ranges: Object.fromEntries(WINDOW_KEYS.map((k) => [k, allowedRange(config.budgets, k, p, otherUsage(config.budgets, k, live(k), p))])),
     check: check(p, config, state, nowSec),
   }));
   return {

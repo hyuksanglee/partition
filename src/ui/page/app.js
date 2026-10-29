@@ -125,8 +125,9 @@ function renderBar() {
   $('bar-total').textContent = tr('bar.allocated', { n: pp(othersTotal + mine) });
 
   const mark = $('range-mark');
+  // 줄 수 있는 범위: 다른 프로젝트 할당 뒤부터, 기타 사용(오른쪽 회색) 앞까지
   mark.style.left = `${othersTotal}%`;
-  mark.style.width = `${100 - othersTotal}%`;
+  mark.style.width = `${Math.min(100 - othersTotal, sel.ranges[win].max)}%`;
 
   const legend = [...others, ...(mine > 0 ? [sel] : [])].map((p) =>
     el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p === sel ? mine : p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
