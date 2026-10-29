@@ -35,7 +35,14 @@ test('한국어: 막대·단계·내역, 라벨 정렬', () => {
   assert.match(text, /5시간 · 리셋/);
   assert.match(text, /이 프로젝트 {2}█{20}░{4} {2}50 \/ 60%p {2}⚠ 경고/);
   assert.match(text, /계정 전체 {4}█{11}░{13} {2}45%/);
-  assert.match(text, /├ 추적 전 {8}37%p\n {15}├ 이 프로젝트 {4}50%p\n {15}├ 다른 프로젝트 {3}0%p\n {15}└ 미귀속 {10}0%p/);
+  assert.match(text, /├ 추적 전 {6}37%p\n {15}└ 이 프로젝트 {2}50%p\n/);
+  assert.doesNotMatch(text, /다른 프로젝트|미귀속/, '0이면 숨긴다');
+});
+
+test('다른 프로젝트·미귀속은 0보다 크면 보인다', () => {
+  const busy = { ...state, windows: { ...state.windows, fiveHour: { ...state.windows.fiveHour, byProject: { [proj]: 5, other: 3 }, unattributed: 1.5 } } };
+  const text = status(proj, { config, state: busy, lang: 'ko', nowSec }).text;
+  assert.match(text, /├ 다른 프로젝트 {4}3%p\n {15}└ 미귀속 {9}1\.5%p/);
   assert.match(text, /이 프로젝트 {2}1%p · 예산 없음/);
 });
 

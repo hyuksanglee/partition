@@ -57,11 +57,12 @@ export function status(project, { config, state, lang, nowSec }) {
     );
     lines.push(`  ${pad(labels[1], labelWidth)}${bar(w.totalPct / 100)}  ${fmtPp(w.totalPct)}%`);
     // 계정 사용률의 내역. 한 줄로 쓰면 좁은 창에서 줄이 넘어가 정렬이 깨져서 항목마다 한 줄씩.
+    // 다른 프로젝트·미귀속은 0이면 숨긴다(한 프로젝트만 쓰는 동안엔 늘 0이라 자리만 차지).
     const rows = [
       [t(lang, 'status.before'), w.beforeTracking],
       [t(lang, 'status.project'), w.used],
-      [t(lang, 'status.others'), w.othersPp],
-      [t(lang, 'status.unattributed'), w.unattributed],
+      ...(w.othersPp > 0 ? [[t(lang, 'status.others'), w.othersPp]] : []),
+      ...(w.unattributed > 0 ? [[t(lang, 'status.unattributed'), w.unattributed]] : []),
     ];
     const nameWidth = Math.max(...rows.map(([name]) => displayWidth(String(name)))) + 2;
     const numWidth = Math.max(...rows.map(([, v]) => fmtPp(Number(v)).length));
