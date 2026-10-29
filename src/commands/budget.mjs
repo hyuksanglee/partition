@@ -29,6 +29,8 @@ export function parseBudgetArgs(args) {
  * @returns {{ ok: boolean, text: string, data: { max: number, value: number | null } }}
  */
 export function setProjectBudget(project, window, value, lang) {
+  // 0은 "설정 안 함"으로 받는다. 0%p 예산(곧바로 차단)은 쓸 일이 거의 없고, 0을 넣는 사람은 대개 제한을 없애려는 것이다.
+  if (value === 0) value = null;
   const name = projectName(project);
   const label = t(lang, `window.${window}`);
   /** @type {string | null} */

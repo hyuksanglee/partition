@@ -13,7 +13,7 @@ import { openUi, openUiDetached } from './commands/ui.mjs';
 const HELP = `partition — per-project budgets for Claude usage limits
 
   partition status                  this project's usage and budget
-  partition budget <0-100|off> [--week]
+  partition budget <1-100|0|off> [--week]   (0 or off = no limit)
                                     set this project's 5-hour (or weekly) budget in %p
   partition rules [--warn 80] [--margin 3] [--block on|off] [--lang auto|ko|en]
   partition ui [--detach]           open the settings window

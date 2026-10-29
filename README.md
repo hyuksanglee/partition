@@ -133,7 +133,7 @@ Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node
 | --- | --- |
 | `/partition:ui` | Open the settings window: the whole limit as one bar, each project's share, how much is left to give. Drag to change, let go to save. |
 | `/partition:status` | This project's usage and budget, other projects, unattributed usage, reset times. |
-| `/partition:budget <0-100 \| off> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. |
+| `/partition:budget <1-100 \| 0> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. `0` (or `off`) removes the limit. |
 | `/partition:setup` | Connect the status line. Shows the change first. |
 
 `ui`, `status` and `budget` run in a hook before Claude sees the prompt; Claude only shows the result, without tools. That costs one short response (measured: $0.11 in a fresh `claude -p` session; more in a long conversation, because Claude rereads it). A hook could answer with no model call at all, but then Claude Code labels every answer "blocked by hook", which reads like an error.
