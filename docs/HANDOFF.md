@@ -1,7 +1,7 @@
 # Partition 인계 문서 (Claude Code에서 처음부터 다시 만들기용)
 
 > 2026-10-29, Claude 앱(Claude 탭) 대화에서 정리. 이 문서만 읽고 이어서 작업할 수 있게 썼다.
-> 기존 코드(`~/Project/Partition-v0`)는 참고용 v0.1 시제품이다. 그대로 이어도 되고, 새로 만들어도 된다.
+> 기존 코드(`~/Project/Partition-v0`)는 참고용 v0.1 시제품이다. 새 구현은 `~/Project/Partition`(github.com/hyuksanglee/partition)에 있고 설계는 `docs/DESIGN.md`.
 
 ## 0. 작업 방식 (사용자 선호)
 
@@ -79,9 +79,10 @@ Claude Code용 같은 개념이 이미 있다(2026-10-29 검색, 모두 MIT, 스
 ## 5. 아직 확인 못 한 것
 
 1. Claude 앱 **Code 탭이 커스텀 status line을 실행하는지** (안 하면 Code 탭 사용량은 기록이 안 됨)
-2. 대화형 모드에서도 슬래시 명령이 hook에 먼저 들어오는지 (`-p` 모드에서만 확인)
-3. 실제 Pro/Max 계정에서 rate_limits가 들어오고 배분이 맞게 되는지
-4. AI가 마무리 지시를 실제로 따르는지
+   - 2026-10-29: settings.json에 연결한 직후 같은 Code 탭 세션에서는 status line 실행 흔적(state.json)이 없었다. 새 세션에서 다시 볼 것.
+2. ~~대화형 모드에서도 슬래시 명령이 hook에 먼저 들어오는지~~ → **확인(2026-10-29, 터미널 대화형).** `/partition:status`가 UserPromptSubmit hook에서 처리되고 AI 응답 없이 끝남. 화면에 "UserPromptSubmit operation blocked by hook:" + 결과 + "Original prompt: …"가 표시됨. SessionStart의 systemMessage는 "SessionStart:startup says: …"로 보임. Code 탭에서는 미확인.
+3. 실제 Pro 계정에서 rate_limits가 들어오는지 → **확인(터미널 대화형, Pro). 첫 응답 전에도 값이 있었음(5시간 12%, 주간 17%).** 배분이 맞는지는 미확인.
+4. ~~AI가 마무리 지시를 따르는지~~ → **1회 확인(`claude -p`, Opus 5.5).** 마무리 단계에서 큰 작업을 요청하자 시작하지 않고 남은 일만 정리함(1턴). 표본 1회.
 5. Codex hook이 `/hooks` 신뢰 후 Desktop에서 동작하는지
 
 ## 6. 남은 일

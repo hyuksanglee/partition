@@ -9,11 +9,14 @@ Claude Pro and Max plans have a 5-hour limit and a weekly limit shared by everyt
 Partition lets you give each project a share of each limit, in percentage points (pp), like assigning memory to containers. When a project gets close to its share, Partition warns you, asks Claude to wrap up, and then blocks new requests for that project.
 
 > [!WARNING]
-> **Experimental.** The logic is covered by tests, but Partition has not been checked yet in real Claude Code sessions. In particular, it is not yet confirmed that:
-> - the Claude desktop app's Code tab runs custom status lines (if it does not, usage there is not counted)
-> - in interactive sessions, `/partition:*` commands reach the hook before the model (confirmed only in `claude -p` mode)
-> - the per-project split matches real usage closely
-> - Claude follows the wrap-up instruction
+> **Experimental.** Checked so far (Claude Code 2.1.312, Pro plan, 2026-10-29):
+> - In the terminal, both interactive and `claude -p`, `/partition:*` commands are handled by the hook before the model is called.
+> - The status line receives real `rate_limits` values.
+> - In one test, Claude followed the wrap-up instruction and did not start the new work.
+>
+> Not confirmed yet:
+> - whether the Claude desktop app's Code tab runs custom status lines (if it does not, usage there is not counted)
+> - how closely the per-project split matches real usage
 >
 > Reports are welcome in [Issues](https://github.com/hyuksanglee/partition/issues).
 
