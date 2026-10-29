@@ -193,13 +193,3 @@ Plain JavaScript, no runtime dependencies, no build step. Design notes: [docs/DE
 ## License
 
 [MIT](LICENSE). Take your share.
-
-## Star History
-
-<a href="https://www.star-history.com/hyuksanglee/partition#history">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date" />
- </picture>
-</a>
