@@ -19,7 +19,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="../assets/settings-dark.jpg">
-    <img src="../assets/settings-light.jpg" width="560" alt="Partition 설정 창: 5시간 한도를 막대 하나로 보여주고 api-server 40%p, docs 10%p, web-app 30%p, 미할당 20%p로 나눈 모습. web-app을 고르면 0–50%p까지 줄 수 있고, 30%p 중 18.4%p를 썼다.">
+    <img src="../assets/settings-light.jpg" width="560" alt="Partition 설정 창: 5시간 한도를 막대 하나로 보여준다. api-server는 40%p 중 12, docs는 10%p 중 0, web-app은 30%p 중 18.4를 썼고, 쓴 부분은 진하게, 남은 부분은 빗금으로 그린다. 오른쪽 끝 회색은 예산 밖 사용(15.6%p). web-app을 고르면 0–34.4%p까지 줄 수 있다.">
   </picture>
 </p>
 
@@ -92,13 +92,38 @@
 - **어디서 썼는지 모르는 사용은 그렇게 표시합니다.** 웹이나 다른 기기에서 쓴 양은 *미귀속*, Partition이 세기 시작하기 전 사용은 *기타*로 따로 보여줍니다.
 - **확실하지 않으면 통과시킵니다.** 값이 아직 없을 때, 창이 리셋됐을 때, Partition에 오류가 났을 때는 막지 않습니다. Partition 자신의 명령도 막지 않습니다.
 
-## status line
+## 설정 창
+
+`/partition:ui`를 실행하면 작은 창이 열립니다(macOS는 기본 WebKit 창, 그 밖에는 Chrome 앱 모드나 기본 브라우저).
+
+- **한도 전체를 막대 하나로** 보여줍니다. 프로젝트마다 자기 색으로, 쓴 만큼은 **진하게**, 남은 만큼은 **빗금**으로 그립니다.
+- **오른쪽 끝 회색**은 어떤 예산에도 속하지 않는 사용입니다. Partition 적용 전, 웹·다른 기기, 예산 없는 프로젝트에서 쓴 양이에요. 이미 쓴 양이라 누구에게도 줄 수 없습니다.
+- **막대 아래 선**은 고른 프로젝트에 줄 수 있는 범위입니다. 다른 프로젝트 몫 뒤부터 회색이 시작하는 곳까지예요.
+- 슬라이더를 끌거나 숫자를 넣으면 막대에 바로 보이지만, **아래 바의 [저장]을 눌러야 저장됩니다.** `0`은 제한 없음이에요.
+- **규칙** 탭에서는 경고 시점, 마무리 지시 시점, 차단 여부, 언어를 정하고, **연결** 탭에서는 status line 연결 상태를 봅니다.
+
+## /partition:status
+
+```
+Partition · web-app
+
+5시간 · 리셋 10/29 19:30
+  이 프로젝트  ███████████████░░░░░░░░░  18.4 / 30%p
+  계정 전체    ███████████░░░░░░░░░░░░░  46%
+               ├ web-app     18.4%p
+               ├ api-server    12%p
+               └ 기타        15.6%p
+```
+
+프로젝트는 폴더 이름으로, 지금 프로젝트부터 보여주고 0인 줄은 뺍니다. 문구는 시스템 언어(한국어/영어)를 따르고, **규칙** 탭에서 고정할 수 있습니다.
+
+## status line (터미널)
 
 ```
 [web-app 18.4/30%p · 5h 46%]
 ```
 
-`web-app`이 30%p 중 18.4%p를 썼고, 계정 전체로는 5시간 한도의 46%를 썼다는 뜻입니다. 주간 예산이 있으면 `· 7d 9/20%p`가 붙습니다. 원래 쓰던 status line이 있으면 그대로 실행되고 Partition이 옆에 붙습니다.
+`web-app`이 30%p 중 18.4%p를 썼고, 계정 전체로는 5시간 한도의 46%를 썼다는 뜻입니다. 주간 예산이 있으면 `· 7d 9/20%p`가 붙습니다. 원래 쓰던 status line이 있으면 그대로 실행되고 Partition이 옆에 붙습니다. 데스크톱 앱 Code 탭에는 status line이 표시되지 않습니다.
 
 ## 설치
 
@@ -111,7 +136,7 @@
 /plugin install partition@partition
 ```
 
-그다음 status line을 연결합니다.
+터미널에서 쓴다면 status line도 연결합니다(데스크톱 앱 Code 탭은 필요 없습니다).
 
 ```
 /partition:setup
@@ -131,10 +156,10 @@
 
 | 명령 | 하는 일 |
 | --- | --- |
-| `/partition:ui` | 설정 창 열기. 한도 전체를 막대 하나로, 프로젝트별 몫과 남은 여유를 보여줍니다. 끌어서 바꾸고, [저장]을 눌러야 저장됩니다. |
-| `/partition:status` | 이 프로젝트의 사용량과 예산, 다른 프로젝트, 미귀속 사용, 리셋 시각 |
+| `/partition:ui` | 설정 창 열기(위 설명 참고) |
+| `/partition:status` | 이 프로젝트 사용량을 막대 그래프로, 계정 사용량을 프로젝트별로 |
 | `/partition:budget <1-100 \| 0> [--week]` | 이 프로젝트의 5시간 한도 몫을 정합니다. `--week`를 붙이면 주간 한도. `0`(또는 `off`)은 제한 해제 |
-| `/partition:setup` | status line 연결. 바꿀 내용을 먼저 보여줍니다. |
+| `/partition:setup` | status line 연결(터미널). 바꿀 내용을 먼저 보여줍니다. |
 
 `ui`, `status`, `budget`은 Claude가 입력을 보기 전에 hook이 실행하고, Claude는 도구 없이 결과만 보여줍니다. 그래서 짧은 응답 하나만큼 사용량을 씁니다(새 `claude -p` 세션에서 $0.11로 측정, 대화가 길면 다시 읽는 양만큼 더 씁니다). hook만으로 AI 호출 없이 답할 수도 있지만, 그러면 Claude Code가 모든 답에 "훅이 프롬프트를 차단했습니다"를 붙여 오류처럼 보입니다.
 
@@ -174,12 +199,14 @@
 
 - [x] 터미널의 대화형 모드와 `claude -p`에서 `/partition:*` 명령은 AI보다 hook이 먼저 실행합니다.
 - [x] status line에 실제 `rate_limits` 값이 들어옵니다.
-- [x] 한 번의 테스트에서 Claude가 마무리 지시를 따라 새 작업을 시작하지 않았습니다.
+- [x] Claude가 마무리 지시를 따라 새 작업을 시작하지 않았습니다(`claude -p`에서 한 번, Code 탭에서도).
 - [x] 데스크톱 앱 Code 탭에서도 `/partition:*` 명령을 hook이 실행합니다.
 - [x] Code 탭은 커스텀 status line을 **실행하지 않습니다** (`settings.json`에 연결했지만 실행되지 않음).
 - [x] `claude -p "/usage"`는 토큰 0으로 5시간·주간 사용률을 돌려줍니다.
-- [ ] Code 탭 안에서 Partition의 백그라운드 `Stop` hook이 그 값을 받는지
-- [ ] 프로젝트별 배분이 실제 사용과 얼마나 맞는지
+- [x] Code 탭에서 Partition의 백그라운드 `Stop` hook이 응답마다 그 값을 기록합니다.
+- [x] 계정 사용률이 오른 만큼을 두 프로젝트의 토큰 비중대로 나눴습니다(Code 탭, 실제 사용).
+- [ ] 예산 도달 시 차단을 실제 사용으로 확인
+- [ ] 한 창 전체에 걸쳐 프로젝트별 배분이 실제와 얼마나 맞는지
 
 결과나 문제는 [Issues](https://github.com/hyuksanglee/partition/issues)에 알려 주세요.
 

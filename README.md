@@ -19,7 +19,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/settings-dark.jpg">
-    <img src="assets/settings-light.jpg" width="560" alt="The Partition settings window: the 5-hour limit as one bar, split into api-server 40pp, docs 10pp, web-app 30pp and 20pp unallocated. web-app is selected, can be given 0 to 50pp, and has used 18.4 of its 30pp.">
+    <img src="assets/settings-light.jpg" width="560" alt="The Partition settings window: the 5-hour limit as one bar. api-server has used 12 of its 40pp, docs 0 of 10pp, web-app 18.4 of 30pp; the used part of each share is solid and the rest striped. Gray at the right end is usage no budget covers (15.6pp). web-app is selected and can be given 0 to 34.4pp.">
   </picture>
 </p>
 
@@ -92,13 +92,38 @@ Honest, not exact:
 - **Usage it cannot place is shown as such.** Claude on the web or another device shows up as *unattributed*; usage from before Partition started counting, as *other*.
 - **When it is unsure, it lets you through.** No data yet, a window that has reset, or an error in Partition never blocks you. Neither do Partition's own commands.
 
-## The status line
+## The settings window
+
+`/partition:ui` opens a small window (a native WebKit window on macOS; elsewhere Chrome app mode or your browser).
+
+- **One bar for the whole limit.** Each project's share is drawn in its color: **solid** for what it has used, **striped** for what is still left.
+- **Gray from the right end** is usage no budget covers: from before Partition, from the web or other devices, and from projects without a budget. It is already spent, so nobody can be given it.
+- **The line under the bar** shows how much the selected project can be given: after the other projects' shares, up to where the gray starts.
+- Drag the slider or type a number; the bar updates as you go. **Nothing is saved until you press Save** in the bar at the bottom. `0` means no limit.
+- **Rules** sets when to warn, when to ask Claude to wrap up, whether to block, and the language. **Connection** shows the status line setup.
+
+## /partition:status
+
+```
+Partition · web-app
+
+5-hour · resets 10/29 19:30
+  This project  ███████████████░░░░░░░░░  18.4 / 30pp
+  Account       ███████████░░░░░░░░░░░░░  46%
+                ├ web-app     18.4pp
+                ├ api-server    12pp
+                └ other       15.6pp
+```
+
+Projects are listed by folder name, the current one first. Rows that are 0 are left out. Messages follow your system language (Korean or English), or the language you pick in **Rules**.
+
+## The status line (terminal)
 
 ```
 [web-app 18.4/30%p · 5h 46%]
 ```
 
-`web-app` has used 18.4 of its 30pp, and the account is at 46% of the 5-hour limit. A weekly budget adds `· 7d 9/20%p`. If you already had a status line, it keeps running and Partition sits next to it.
+`web-app` has used 18.4 of its 30pp, and the account is at 46% of the 5-hour limit. A weekly budget adds `· 7d 9/20%p`. If you already had a status line, it keeps running and Partition sits next to it. The desktop app's Code tab does not show status lines.
 
 ## Install
 
@@ -111,7 +136,7 @@ Honest, not exact:
 /plugin install partition@partition
 ```
 
-Then connect the status line:
+In the terminal, also connect the status line (the desktop app's Code tab does not need it):
 
 ```
 /partition:setup
@@ -131,10 +156,10 @@ Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node
 
 | Command | What it does |
 | --- | --- |
-| `/partition:ui` | Open the settings window: the whole limit as one bar, each project's share, how much is left to give. Drag to change, then press Save. |
-| `/partition:status` | This project's usage and budget, other projects, unattributed usage, reset times. |
+| `/partition:ui` | Open the settings window (see above). |
+| `/partition:status` | This project's usage as bar graphs, with every project's share of the account usage. |
 | `/partition:budget <1-100 \| 0> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. `0` (or `off`) removes the limit. |
-| `/partition:setup` | Connect the status line. Shows the change first. |
+| `/partition:setup` | Connect the status line (terminal). Shows the change first. |
 
 `ui`, `status` and `budget` run in a hook before Claude sees the prompt; Claude only shows the result, without tools. That costs one short response (measured: $0.11 in a fresh `claude -p` session; more in a long conversation, because Claude rereads it). A hook could answer with no model call at all, but then Claude Code labels every answer "blocked by hook", which reads like an error.
 
@@ -174,12 +199,14 @@ Experimental. Checked on Claude Code 2.1.312 with a Pro plan (2026-10-29):
 
 - [x] In the terminal, interactive and `claude -p`, `/partition:*` commands are run by the hook before the model.
 - [x] The status line receives real `rate_limits` values.
-- [x] In one test, Claude followed the wrap-up instruction and did not start new work.
+- [x] Claude followed the wrap-up instruction and did not start new work (once in `claude -p`, and in the Code tab).
 - [x] In the desktop app's Code tab, `/partition:*` commands are run by the hook too.
 - [x] The Code tab does **not** run custom status lines (`settings.json` pointed to Partition, nothing ran).
 - [x] `claude -p "/usage"` returns the 5-hour and weekly percentages with 0 tokens.
-- [ ] Partition's background `Stop` hook gets those values inside the Code tab.
-- [ ] The per-project split matches real usage closely.
+- [x] In the Code tab, Partition's background `Stop` hook records those values after each response.
+- [x] The account increase was split between two projects by their tokens (Code tab, real usage).
+- [ ] Blocking at the budget, checked with real usage.
+- [ ] How closely the per-project split matches real usage over a full window.
 
 Results and problems are welcome in [Issues](https://github.com/hyuksanglee/partition/issues).
 
