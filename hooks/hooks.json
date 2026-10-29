@@ -1,0 +1,14 @@
+{
+  "description": "Partition: per-project usage budgets",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/claude/hook.mjs\"", "timeout": 10 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/claude/hook.mjs\"", "timeout": 10 }] }
+    ],
+    "PreToolUse": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/claude/hook.mjs\"", "timeout": 10 }] }
+    ]
+  }
+}

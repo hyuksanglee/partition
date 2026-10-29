@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partition</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">Partition</div>
+    <nav role="tablist">
+      <button role="tab" data-tab="budget" aria-selected="true" data-i18n="tab.budget"></button>
+      <button role="tab" data-tab="rules" aria-selected="false" data-i18n="tab.rules"></button>
+      <button role="tab" data-tab="connection" aria-selected="false" data-i18n="tab.connection"></button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="tab-budget" role="tabpanel">
+      <div class="row between">
+        <div class="segmented" id="window-switch">
+          <button data-window="fiveHour" aria-pressed="true" data-i18n="window.fiveHour"></button>
+          <button data-window="sevenDay" aria-pressed="false" data-i18n="window.sevenDay"></button>
+        </div>
+        <select id="project-select" aria-label="Project"></select>
+      </div>
+
+      <div class="card">
+        <div class="bar-label"><span data-i18n="bar.title"></span><span id="bar-total" class="muted"></span></div>
+        <div class="bar" id="alloc-bar"></div>
+        <div class="range-track"><div class="range" id="range-mark"></div></div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <strong id="project-name"></strong>
+          <span class="badge" id="stage-badge"></span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="budget-slider" min="0" max="100" step="1">
+          <input type="number" id="budget-number" min="0" max="100" step="1">
+          <span class="unit pp"></span>
+        </div>
+        <div class="row between muted small">
+          <span id="range-text"></span>
+          <button class="link" id="budget-clear" data-i18n="budget.clear"></button>
+        </div>
+        <dl class="stats" id="usage-stats"></dl>
+      </div>
+      <p class="note small muted" data-i18n="note.attribution"></p>
+    </section>
+
+    <section id="tab-rules" role="tabpanel" hidden>
+      <div class="card form">
+        <label><span data-i18n="rules.warn"></span>
+          <span class="inline"><input type="number" id="rule-warn" min="0" max="100" step="5"><span class="unit">%</span></span>
+        </label>
+        <p class="hint" data-i18n="rules.warn.hint"></p>
+        <label><span data-i18n="rules.margin"></span>
+          <span class="inline"><input type="number" id="rule-margin" min="0" max="50" step="1"><span class="unit pp"></span></span>
+        </label>
+        <p class="hint" data-i18n="rules.margin.hint"></p>
+        <label><span data-i18n="rules.block"></span>
+          <input type="checkbox" id="rule-block" class="switch">
+        </label>
+        <p class="hint" data-i18n="rules.block.hint"></p>
+        <label><span data-i18n="rules.language"></span>
+          <select id="rule-language">
+            <option value="auto" data-i18n="lang.auto"></option>
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </div>
+      <div class="card">
+        <strong data-i18n="rules.weights"></strong>
+        <p class="hint" data-i18n="rules.weights.hint"></p>
+        <code id="weights"></code>
+      </div>
+    </section>
+
+    <section id="tab-connection" role="tabpanel" hidden>
+      <div class="card">
+        <div class="row between">
+          <strong data-i18n="conn.statusline"></strong>
+          <span class="badge" id="conn-badge"></span>
+        </div>
+        <dl class="stats" id="conn-stats"></dl>
+      </div>
+      <div class="card">
+        <strong id="plan-title"></strong>
+        <pre id="plan"></pre>
+        <div class="row end">
+          <button class="primary" id="plan-apply"></button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>
