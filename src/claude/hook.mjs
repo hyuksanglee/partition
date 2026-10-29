@@ -1,4 +1,4 @@
-// hook 진입점: SessionStart · UserPromptSubmit · PreToolUse.
+// hook 진입점: SessionStart · UserPromptSubmit · PreToolUse · Stop.
 // 오류가 나면 아무것도 출력하지 않고 통과시킨다(fail-open).
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -12,6 +12,8 @@ import { status } from '../commands/status.mjs';
 import { budgetCommand } from '../commands/budget.mjs';
 import { openUiDetached } from '../commands/ui.mjs';
 import { isConnected } from './settings.mjs';
+import { record } from './statusline.mjs';
+import { FETCHING_ENV, fetchUsage } from './usage.mjs';
 
 /**
  * @typedef {object} HookInput
@@ -20,7 +22,11 @@ import { isConnected } from './settings.mjs';
  * @property {string} [prompt]
  * @property {string} [tool_name]
  * @property {Record<string, unknown>} [tool_input]
+ * @property {string} [transcript_path]
  */
+
+/** status line이나 /usage로 이만큼 안에 값을 받았으면 Stop hook은 다시 받지 않는다. */
+export const USAGE_MIN_INTERVAL_MS = 60_000;
 
 /** hook이 가로채서 토큰 0으로 처리하는 명령. setup은 승인이 필요해서 skill로 간다. */
 const INTERCEPTED = new Set(['ui', 'status', 'budget']);
@@ -55,9 +61,15 @@ function runCommand(name, args, project, lang) {
 /**
  * @param {HookInput} input
  * @param {number} nowSec
+ * @param {{ fetchUsage?: typeof fetchUsage }} [deps] 테스트용
  * @returns {object | null} hook 출력 JSON. null이면 출력 없이 통과
  */
-export function handle(input, nowSec = Date.now() / 1000) {
+export function handle(input, nowSec = Date.now() / 1000, deps = {}) {
+  if (input.hook_event_name === 'Stop') {
+    recordUsageAfterResponse(input, nowSec * 1000, deps.fetchUsage ?? fetchUsage);
+    return null;
+  }
+
   const project = findProject(input.cwd || process.cwd());
   const config = loadConfig();
   const lang = resolveLang(config.language);
@@ -112,6 +124,29 @@ export function handle(input, nowSec = Date.now() / 1000) {
 }
 
 /**
+ * 응답이 끝난 뒤(Stop, 백그라운드) /usage로 사용률을 받아 기록한다.
+ * status line을 실행하지 않는 데스크톱 앱 Code 탭을 위한 경로. 터미널에서는 status line이 이미 했으면 건너뛴다.
+ * @param {HookInput} input
+ * @param {number} nowMs
+ * @param {typeof fetchUsage} fetch
+ * @returns {boolean} 기록했는지
+ */
+export function recordUsageAfterResponse(input, nowMs, fetch) {
+  // 다른 Stop hook이 받는 중이면 겹치지 않게, 받기 전에 시각부터 찍는다.
+  let skip = false;
+  updateState((s) => {
+    const last = Math.max(s.lastStatusLineAt ?? 0, s.lastUsageFetchAt ?? 0);
+    skip = nowMs - last < USAGE_MIN_INTERVAL_MS;
+    return skip ? s : { ...s, lastUsageFetchAt: nowMs };
+  });
+  if (skip) return false;
+  const rateLimits = fetch(nowMs);
+  if (!rateLimits) return false;
+  record({ cwd: input.cwd, transcript_path: input.transcript_path, rate_limits: rateLimits }, nowMs, 'usage');
+  return true;
+}
+
+/**
  * Partition 자신의 skill·CLI 실행은 차단 중에도 허용한다.
  * @param {HookInput} input
  */
@@ -123,6 +158,8 @@ export function isOwnTool(input) {
 }
 
 export function main() {
+  // /usage를 받으려고 띄운 claude 안에서 다시 불린 hook이면 아무것도 하지 않는다.
+  if (process.env[FETCHING_ENV]) return;
   try {
     const input = JSON.parse(readFileSync(0, 'utf8'));
     const out = handle(input);

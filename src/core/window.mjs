@@ -22,8 +22,9 @@ export const WINDOW_KEYS = ['fiveHour', 'sevenDay'];
  * @property {number} resetsAt
  */
 
-// resets_at가 응답마다 조금씩 흔들릴 수 있어(미확인) 1분 넘게 바뀌어야 리셋으로 본다.
-const RESET_TOLERANCE_SEC = 60;
+// resets_at는 출처마다 조금 다르다(status line은 초 단위, /usage는 분 단위).
+// 리셋이면 5시간·주간 단위로 크게 움직이므로 10분 넘게 바뀌어야 리셋으로 본다.
+const RESET_TOLERANCE_SEC = 600;
 
 /**
  * @param {number} resetsAt

@@ -80,6 +80,7 @@ An example, with `web-app` given 30pp of the 5-hour limit:
 ```
 
 1. **The status line sees the usage.** Claude Code passes it `rate_limits` (5-hour and weekly percent, reset time) after every response. Hooks do not get these values, so the status line saves them to `~/.partition/`.
+   The desktop app's Code tab does not run status lines. There, a background `Stop` hook runs `claude -p "/usage"` after each response instead: it prints the same percentages without calling the model (0 tokens; about 1–2 seconds when measured).
 2. **The increase is split by tokens.** The status line also reads the session's new transcript lines and adds their tokens to that project's pending count. When the account percentage goes up, each project gets a share in proportion to its pending tokens.
 3. **Hooks act on it.** Before every prompt and tool call, Partition checks the project's share against its budget.
 
@@ -124,7 +125,7 @@ Then give the project you are in a share:
 /partition:budget 30
 ```
 
-Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node.js 18+**, and macOS or Linux.
+Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node.js 18+**, and macOS or Linux. In the desktop app, the `claude` command must be installed too (on `PATH` or in `~/.local/bin`).
 
 ## Commands
 
@@ -156,7 +157,7 @@ It lets you through. A missing value, a reset window or an error in Partition ne
 No. Everything stays in `~/.partition/`.
 
 **Does it work in the Claude desktop app?**
-Not confirmed yet. The hooks are shared with the terminal, but it is not yet known whether the desktop app's Code tab runs custom status lines. If it does not, usage there is not counted.
+The commands and hooks do. The Code tab does not run status lines, so Partition reads usage after each response with `claude -p "/usage"` instead. That output is meant for people, not programs: if its wording changes, Partition stops counting there and lets everything through until it is updated.
 
 **Codex?**
 Later. Codex records the same 5-hour and weekly percentages, so it is planned.
@@ -174,7 +175,10 @@ Experimental. Checked on Claude Code 2.1.312 with a Pro plan (2026-10-29):
 - [x] In the terminal, interactive and `claude -p`, `/partition:*` commands are handled by the hook before the model.
 - [x] The status line receives real `rate_limits` values.
 - [x] In one test, Claude followed the wrap-up instruction and did not start new work.
-- [ ] The desktop app's Code tab runs custom status lines.
+- [x] In the desktop app's Code tab, `/partition:*` commands are handled by the hook too.
+- [x] The Code tab does **not** run custom status lines (`settings.json` pointed to Partition, nothing ran).
+- [x] `claude -p "/usage"` returns the 5-hour and weekly percentages with 0 tokens.
+- [ ] Partition's background `Stop` hook gets those values inside the Code tab.
 - [ ] The per-project split matches real usage closely.
 
 Results and problems are welcome in [Issues](https://github.com/hyuksanglee/partition/issues).

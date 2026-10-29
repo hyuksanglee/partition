@@ -18,6 +18,7 @@ import { readJson, withLock, writeJsonAtomic } from './file.mjs';
  * @property {Partial<Record<import('../core/window.mjs').WindowKey, WindowState>>} windows
  * @property {Record<string, TranscriptCursor>} transcripts
  * @property {number} [lastStatusLineAt] status line이 마지막으로 돈 시각(ms). 연결 확인용
+ * @property {number} [lastUsageFetchAt] Stop hook이 /usage로 사용률을 마지막으로 받은 시각(ms)
  */
 
 /**

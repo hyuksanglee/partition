@@ -54,16 +54,18 @@ export function projectOf(input) {
  * 사용률과 새 토큰을 state에 기록한다.
  * @param {StatusLineInput} input
  * @param {number} [nowMs]
+ * @param {'statusline' | 'usage'} [source] 사용률을 어디서 받았는지. 연결 확인·간격 제한에 쓴다
  * @returns {State}
  */
-export function record(input, nowMs = Date.now()) {
+export function record(input, nowMs = Date.now(), source = 'statusline') {
+  const stamp = source === 'statusline' ? { lastStatusLineAt: nowMs } : { lastUsageFetchAt: nowMs };
   const config = loadConfig();
   const project = projectOf(input);
   const readings = readingsFrom(input.rate_limits);
   const hasReadings = Object.keys(readings).length > 0;
 
   return updateState((s) => {
-    if (!hasReadings) return { ...s, lastStatusLineAt: nowMs };
+    if (!hasReadings) return { ...s, ...stamp };
 
     const transcripts = Object.fromEntries(
       Object.entries(s.transcripts).filter(([, c]) => nowMs - c.touchedAt < CURSOR_TTL_MS),
@@ -86,7 +88,7 @@ export function record(input, nowMs = Date.now()) {
       // 처음 보는 창: 지금까지의 사용은 이미 사용률에 들어 있으니 토큰을 더하지 않는다.
       windows[key] = win ? applyReading(addPending(win, { [project]: weight }), reading) : applyReading(undefined, reading);
     }
-    return { ...s, windows, transcripts, lastStatusLineAt: nowMs };
+    return { ...s, windows, transcripts, ...stamp };
   });
 }
 

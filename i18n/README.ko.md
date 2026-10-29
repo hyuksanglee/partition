@@ -80,6 +80,7 @@
 ```
 
 1. **status line이 사용률을 봅니다.** Claude Code는 응답마다 status line에 `rate_limits`(5시간·주간 %, 리셋 시각)를 넘겨줍니다. hook에는 이 값이 오지 않아서 status line이 `~/.partition/`에 저장해 둡니다.
+   데스크톱 앱 Code 탭은 status line을 실행하지 않습니다. 그래서 거기서는 응답이 끝날 때마다 백그라운드 `Stop` hook이 `claude -p "/usage"`를 실행해 같은 사용률을 받습니다. AI를 부르지 않아 토큰 0이고, 재보니 1~2초 걸렸습니다.
 2. **오른 만큼을 토큰 비중대로 나눕니다.** status line은 세션 기록 파일의 새 줄도 읽어 그 프로젝트의 대기분에 토큰을 더합니다. 계정 사용률이 오르면 각 프로젝트가 대기분 비중만큼 가져갑니다.
 3. **hook이 판단합니다.** 요청과 도구 실행 직전마다 프로젝트 몫을 예산과 비교합니다.
 
@@ -124,7 +125,7 @@
 /partition:budget 30
 ```
 
-**Pro 또는 Max** 요금제(사용률 값은 구독자에게만 옵니다), **Node.js 18 이상**, macOS 또는 Linux가 필요합니다.
+**Pro 또는 Max** 요금제(사용률 값은 구독자에게만 옵니다), **Node.js 18 이상**, macOS 또는 Linux가 필요합니다. 데스크톱 앱에서는 `claude` 명령도 설치돼 있어야 합니다(`PATH` 또는 `~/.local/bin`).
 
 ## 명령
 
@@ -156,7 +157,7 @@
 아니요. 전부 `~/.partition/`에만 있습니다.
 
 **Claude 데스크톱 앱에서도 되나요?**
-아직 확인하지 못했습니다. hook은 터미널과 같이 쓰지만, 데스크톱 앱 Code 탭이 커스텀 status line을 실행하는지는 아직 모릅니다. 실행하지 않으면 그곳 사용량은 세지 않습니다.
+명령과 hook은 됩니다. Code 탭은 status line을 실행하지 않아서, 대신 응답이 끝날 때마다 `claude -p "/usage"`로 사용률을 읽습니다. 이 출력은 사람이 읽는 문장이라, 문구가 바뀌면 Partition은 그곳에서 사용량을 세지 못하고 고쳐질 때까지 모두 통과시킵니다.
 
 **Codex는요?**
 나중에. Codex도 같은 5시간·주간 사용률을 기록하므로 계획에 있습니다.
@@ -174,7 +175,10 @@
 - [x] 터미널의 대화형 모드와 `claude -p`에서 `/partition:*` 명령은 AI보다 hook이 먼저 처리합니다.
 - [x] status line에 실제 `rate_limits` 값이 들어옵니다.
 - [x] 한 번의 테스트에서 Claude가 마무리 지시를 따라 새 작업을 시작하지 않았습니다.
-- [ ] 데스크톱 앱 Code 탭이 커스텀 status line을 실행하는지
+- [x] 데스크톱 앱 Code 탭에서도 `/partition:*` 명령을 hook이 처리합니다.
+- [x] Code 탭은 커스텀 status line을 **실행하지 않습니다** (`settings.json`에 연결했지만 실행되지 않음).
+- [x] `claude -p "/usage"`는 토큰 0으로 5시간·주간 사용률을 돌려줍니다.
+- [ ] Code 탭 안에서 Partition의 백그라운드 `Stop` hook이 그 값을 받는지
 - [ ] 프로젝트별 배분이 실제 사용과 얼마나 맞는지
 
 결과나 문제는 [Issues](https://github.com/hyuksanglee/partition/issues)에 알려 주세요.

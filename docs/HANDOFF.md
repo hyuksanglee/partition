@@ -79,7 +79,11 @@ Claude Code용 같은 개념이 이미 있다(2026-10-29 검색, 모두 MIT, 스
 ## 5. 아직 확인 못 한 것
 
 1. Claude 앱 **Code 탭이 커스텀 status line을 실행하는지** (안 하면 Code 탭 사용량은 기록이 안 됨)
-   - 2026-10-29: settings.json에 연결한 직후 같은 Code 탭 세션에서는 status line 실행 흔적(state.json)이 없었다. 새 세션에서 다시 볼 것.
+   - → **실행하지 않음(2026-10-29 확인).** settings.json에 연결하고 플러그인을 설치한 뒤 새 Code 탭 세션에서 응답을 받아도 state.json이 생기지 않았다. 공식 문서에는 이에 대한 언급이 없었다.
+   - 대안: `claude -p "/usage"`가 AI 호출 없이(토큰 0, $0, num_turns 0) 5시간·주간 %와 리셋 시각을 문장으로 출력한다(1.2~2.1초). Stop hook(async)에서 이를 실행해 기록하도록 구현(v0.2.0). `--bare`는 OAuth를 읽지 않아 사용률이 안 나온다. hook 입력·기록 파일·OpenTelemetry에는 사용률이 없다.
+   - Code 탭에서 Stop hook이 실제로 값을 받는지는 미확인.
+   - Code 탭에서 `/partition:ui`가 hook에서 처리됨(토큰 0) 확인. 화면에는 "훅이 프롬프트를 차단했습니다" + 결과.
+   - 플러그인 설치 후 새 Code 탭 세션에서도 install.json의 pluginRoot가 바뀌지 않았다 → SessionStart가 돌지 않았을 수 있음(미확인).
 2. ~~대화형 모드에서도 슬래시 명령이 hook에 먼저 들어오는지~~ → **확인(2026-10-29, 터미널 대화형).** `/partition:status`가 UserPromptSubmit hook에서 처리되고 AI 응답 없이 끝남. 화면에 "UserPromptSubmit operation blocked by hook:" + 결과 + "Original prompt: …"가 표시됨. SessionStart의 systemMessage는 "SessionStart:startup says: …"로 보임. Code 탭에서는 미확인.
 3. 실제 Pro 계정에서 rate_limits가 들어오는지 → **확인(터미널 대화형, Pro). 첫 응답 전에도 값이 있었음(5시간 12%, 주간 17%).** 배분이 맞는지는 미확인.
 4. ~~AI가 마무리 지시를 따르는지~~ → **1회 확인(`claude -p`, Opus 5.5).** 마무리 단계에서 큰 작업을 요청하자 시작하지 않고 남은 일만 정리함(1턴). 표본 1회.
