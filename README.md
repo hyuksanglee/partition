@@ -1,43 +1,112 @@
-# Partition
+<p align="center">
+  <img src=".claude-plugin/icon.png" width="140" alt="Partition">
+</p>
 
-**Per-project budgets for your Claude Code usage limits.**
+<h1 align="center">Partition</h1>
 
-[한국어](README.ko.md)
+<p align="center">
+  <em>One limit. Many projects. Everyone gets their share.</em>
+</p>
 
-Claude Pro and Max plans have a 5-hour limit and a weekly limit shared by everything you do. When you work on several projects at once, one project can use the whole limit and leave nothing for the others.
+<p align="center">
+  <img src="https://img.shields.io/github/stars/hyuksanglee/partition?style=flat-square&color=111111&label=stars" alt="Stars">
+  <img src="https://img.shields.io/badge/Claude%20Code-plugin-111111?style=flat-square" alt="Claude Code plugin">
+  <img src="https://img.shields.io/badge/node-18%2B-111111?style=flat-square" alt="Node 18+">
+  <img src="https://img.shields.io/badge/status-experimental-111111?style=flat-square" alt="Experimental">
+  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+</p>
 
-Partition lets you give each project a share of each limit, in percentage points (pp), like assigning memory to containers. When a project gets close to its share, Partition warns you, asks Claude to wrap up, and then blocks new requests for that project.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/settings-dark.jpg">
+    <img src="assets/settings-light.jpg" width="560" alt="The Partition settings window: the 5-hour limit as one bar, split into api-server 40pp, docs 10pp, web-app 30pp and 20pp unallocated. web-app is selected, can be given 0 to 50pp, and has used 18.4 of its 30pp.">
+  </picture>
+</p>
 
-> [!WARNING]
-> **Experimental.** Checked so far (Claude Code 2.1.312, Pro plan, 2026-10-29):
-> - In the terminal, both interactive and `claude -p`, `/partition:*` commands are handled by the hook before the model is called.
-> - The status line receives real `rate_limits` values.
-> - In one test, Claude followed the wrap-up instruction and did not start the new work.
->
-> Not confirmed yet:
-> - whether the Claude desktop app's Code tab runs custom status lines (if it does not, usage there is not counted)
-> - how closely the per-project split matches real usage
->
-> Reports are welcome in [Issues](https://github.com/hyuksanglee/partition/issues).
+<p align="center">
+  <strong>Give each project a share of your Claude Code 5-hour and weekly limits.</strong><br>
+  <strong>Near the line it warns, then asks Claude to wrap up, then stops that project.</strong><br>
+  <sub>The other projects keep working.</sub>
+</p>
 
-## What it is, and what it is not
+<p align="center">
+  <sub><a href="i18n/README.ko.md">한국어</a></sub>
+</p>
 
-- **It is a self-imposed limit on your own computer.** Anthropic's servers enforce the real limits; Partition cannot split them. It counts usage per project locally and stops that project when it reaches the budget you set.
-- **It cannot stop exactly on the line.** It acts between steps, so a project can go over its budget by one response or tool call.
-- **If something is missing or broken, it lets you through.** No usage data yet, a window that has reset, or an error in Partition itself never blocks you.
+---
 
-## Requirements
+You know how it goes. Three projects open. One of them goes on a long refactor, and by mid-afternoon the 5-hour limit is at 100%. The other two wait until evening.
 
-- Claude Code with a **Pro or Max** subscription (usage percentages are only given to subscribers, and only after the first response in a session)
-- **Node.js 18+** on your `PATH`
-- macOS or Linux (Windows is not supported yet)
+Your plan's limits are one pool for everything. Partition splits that pool, like giving each container its own slice of memory: `web-app` gets 30pp, `api-server` 40pp, and when `web-app` has used its 30, it stops. `api-server` still has its 40.
+
+## Numbers
+
+Why a budget in percent, and why it has to act early. Measured from the author's own Codex records (119 sessions, 1,381 requests; per-request change measurable for 300 of them), not from Claude Code:
+
+| | Median | p90 | Max |
+| --- | --- | --- | --- |
+| 5-hour limit used by **one request** | 0% | 9% | **91%** |
+| 5-hour limit used between two steps | 1% | 3% | 25% |
+
+- **One request can eat most of the limit.** Waiting until 100% is too late; Partition steps in before.
+- **Tokens per 1% differed about 6× between models** (roughly 40k to 230k). A budget in tokens would mean something different for every model, so Partition budgets in percentage points of the limit itself.
+- **Usage usually rises 1–3% per step.** That is why Claude is asked to wrap up **3pp** before the budget by default.
+
+Method and caveats: [docs/usage-analysis.md](docs/usage-analysis.md) (Korean).
+
+## Before / after
+
+An example, with `web-app` given 30pp of the 5-hour limit:
+
+| | Without Partition | With Partition |
+| --- | --- | --- |
+| `web-app` at 24pp | keeps going | you get one warning |
+| `web-app` at 27pp | keeps going | Claude is told to finish the current task and summarize what is left |
+| `web-app` at 30pp | keeps going until the whole limit is gone | new requests and tool calls in `web-app` are blocked |
+| `api-server` | waits for the reset | still has its own 40pp |
+
+## How it works
+
+```
+ status line            hooks
+ ───────────            ─────
+ after every response   before every prompt and tool call
+   │                      │
+   ├─ reads rate_limits   ├─ /partition:* command? → handle it, no model call
+   ├─ reads new tokens    ├─ 80% of budget  → warn once
+   │  from the transcript ├─ 3pp before     → ask Claude to wrap up
+   └─ splits the increase ├─ at budget      → block
+      by token share      └─ no data / error → let it through
+```
+
+1. **The status line sees the usage.** Claude Code passes it `rate_limits` (5-hour and weekly percent, reset time) after every response. Hooks do not get these values, so the status line saves them to `~/.partition/`.
+2. **The increase is split by tokens.** The status line also reads the session's new transcript lines and adds their tokens to that project's pending count. When the account percentage goes up, each project gets a share in proportion to its pending tokens.
+3. **Hooks act on it.** Before every prompt and tool call, Partition checks the project's share against its budget.
+
+Honest, not exact:
+
+- **It is a self-imposed limit.** Anthropic's servers own the real limits. Partition counts on your machine and stops itself.
+- **It can overshoot by one step.** It acts between responses and tool calls, not in the middle of one.
+- **The token weights are an assumption.** Input 1, cache write 1.25, cache read 0.1, output 5, borrowed from API price ratios. Change them in `~/.partition/config.json`.
+- **Usage it cannot place is shown as such.** Claude on the web or another device shows up as *unattributed*; usage from before tracking started, as *before tracking*.
+- **When it is unsure, it lets you through.** No data yet, a window that has reset, or an error in Partition never blocks you. Neither do Partition's own commands.
+
+## The status line
+
+```
+[web-app 18.4/30%p · 5h 46%]
+```
+
+`web-app` has used 18.4 of its 30pp, and the account is at 46% of the 5-hour limit. A weekly budget adds `· 7d 9/20%p`. If you already had a status line, it keeps running and Partition sits next to it.
 
 ## Install
 
-In Claude Code:
+**Claude Code**, as two separate prompts:
 
 ```
 /plugin marketplace add hyuksanglee/partition
+```
+```
 /plugin install partition@partition
 ```
 
@@ -47,112 +116,90 @@ Then connect the status line:
 /partition:setup
 ```
 
-Plugins cannot set a status line themselves, so this step changes `statusLine` in `~/.claude/settings.json`. Claude shows you the exact change first and applies it only after you approve. If you already have a status line, Partition keeps running it and shows its own part next to it.
+Plugins cannot set a status line themselves, so this changes `statusLine` in `~/.claude/settings.json`. Claude shows the exact change first and applies it only after you say yes.
 
-## Use
+Then give the project you are in a share:
+
+```
+/partition:budget 30
+```
+
+Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node.js 18+**, and macOS or Linux.
+
+## Commands
 
 | Command | What it does |
 | --- | --- |
-| `/partition:ui` | Open the settings window |
-| `/partition:status` | This project's usage and budget |
-| `/partition:budget 30` | Give this project 30pp of the 5-hour limit |
-| `/partition:budget 20 --week` | Give this project 20pp of the weekly limit |
-| `/partition:budget off` | Remove this project's budget |
-| `/partition:setup` | Connect the status line (asks first) |
+| `/partition:ui` | Open the settings window: the whole limit as one bar, each project's share, how much is left to give. Drag to change, let go to save. |
+| `/partition:status` | This project's usage and budget, other projects, unattributed usage, reset times. |
+| `/partition:budget <0-100 \| off> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. |
+| `/partition:setup` | Connect the status line. Shows the change first. |
 
-`ui`, `status` and `budget` are handled by a hook before the model is called, so they use no tokens. Claude Code shows "operation blocked by hook" with the result; that is expected.
+`ui`, `status` and `budget` are answered by a hook before the model is called: **zero tokens**. Claude Code shows the answer under "operation blocked by hook"; that is how it works, not an error.
 
-A **project** is the top of the git repository you are in, or the current folder if there is none.
+A project is the top of the git repository you are in, or the folder itself if there is none.
 
-The status line shows something like:
+The same commands work in a terminal, also without tokens: `node <plugin folder>/src/cli.mjs help`.
 
-```
-[my-app 12/30%p · 5h 41%]
-```
+## FAQ
 
-`my-app` has used 12pp of its 30pp 5-hour budget, and the whole account is at 41% of the 5-hour limit.
+**Does it actually split my plan's limit?**
+No. The limit is one pool on Anthropic's side. Partition keeps count per project on your machine and stops a project that has used its share.
 
-### Settings window
+**Will it stop exactly at 30pp?**
+No. It acts between steps, so it can go over by one response or tool call. The wrap-up step 3pp early is there to make that small.
 
-`/partition:ui` opens a small window (on macOS, a native WebKit window; otherwise Chrome app mode or your browser).
+**What if Partition breaks?**
+It lets you through. A missing value, a reset window or an error in Partition never blocks you.
 
-- **Budget**: the whole limit as one bar, with each project's share and the unallocated part. Pick a project to see how much you can give it (100 − what other projects hold). The bar updates while you drag, and saves when you let go.
-- **Rules**: when to warn, when to ask Claude to wrap up, and whether to block.
-- **Connection**: whether the status line is connected, when it last ran, and buttons to connect or restore.
+**Does it send my data anywhere?**
+No. Everything stays in `~/.partition/`.
 
-### Terminal
+**Does it work in the Claude desktop app?**
+Not confirmed yet. The hooks are shared with the terminal, but it is not yet known whether the desktop app's Code tab runs custom status lines. If it does not, usage there is not counted.
 
-The same features work from a terminal without using tokens:
+**Codex?**
+Later. Codex records the same 5-hour and weekly percentages, so it is planned.
 
-```bash
-node <plugin folder>/src/cli.mjs status
-```
+**How do I remove it?**
+`/partition:ui` → **Connection** → **Restore** puts your original status line back. Then `/plugin uninstall partition@partition`, and delete `~/.partition/` if you like.
 
-Run it with `help` to see every command.
+**Why "Partition"?**
+A disk has one size. You still give each part its own.
 
-## How it works
+## Status
 
-1. **Status line → usage.** Claude Code runs the status line after every response and passes it `rate_limits.five_hour` and `rate_limits.seven_day` (used percentage and reset time). Hooks do not receive these values, so the status line saves them to `~/.partition/state.json`.
-2. **Splitting usage between projects.** The status line also reads the new lines of the session's transcript and adds that session's tokens to its project's *pending* count. When the account percentage goes up, the increase is split between projects by their pending tokens.
-3. **Stages.** For each project and each window:
-   - at **80%** of the budget, you get a warning (once per window)
-   - **3pp** before the budget, Claude is asked to wrap up the current task
-   - at the budget, new requests and tool calls are blocked (you can turn blocking off)
-4. **Partition's own commands are never blocked.**
+Experimental. Checked on Claude Code 2.1.312 with a Pro plan (2026-10-29):
 
-### How the split is counted, and its limits
+- [x] In the terminal, interactive and `claude -p`, `/partition:*` commands are handled by the hook before the model.
+- [x] The status line receives real `rate_limits` values.
+- [x] In one test, Claude followed the wrap-up instruction and did not start new work.
+- [ ] The desktop app's Code tab runs custom status lines.
+- [ ] The per-project split matches real usage closely.
 
-- Tokens are weighted by API price ratios: input 1, cache write 1.25, cache read 0.1, output 5. **This is an assumption**, not something Anthropic publishes about how limits are counted. You can change the weights in `~/.partition/config.json`.
-- A percentage that goes up with no pending tokens (Claude on the web, other devices, sessions without the status line) is shown as **unattributed**.
-- Usage from before Partition started tracking is shown as **before tracking**.
-- With several sessions running at once, the split can lean toward one of them.
-- Subagents that write to separate transcript files are not counted per project.
-- The first time Partition sees a transcript, it counts only the last 10 minutes.
-
-## Settings and data
-
-Everything stays on your computer in `~/.partition/`. Nothing is sent anywhere.
-
-| File | Contents |
-| --- | --- |
-| `config.json` | Budgets, rules, token weights, language |
-| `state.json` | Usage per window and project, transcript read positions |
-| `install.json` | Current plugin path, your original status line |
-| `statusline.mjs` | The launcher registered in `settings.json` |
-
-`config.json` example:
-
-```json
-{
-  "budgets": { "/Users/me/projects/my-app": { "fiveHour": 30, "sevenDay": 20 } },
-  "rules": { "warnAt": 0.8, "wrapMarginPp": 3, "block": true },
-  "weights": { "input": 1, "cacheWrite": 1.25, "cacheRead": 0.1, "output": 5 },
-  "language": "auto"
-}
-```
-
-## Uninstall
-
-1. Open `/partition:ui` → **Connection** → **Restore**. This puts your original status line back in `settings.json`.
-2. `/plugin uninstall partition@partition`
-3. Optionally delete `~/.partition/`.
+Results and problems are welcome in [Issues](https://github.com/hyuksanglee/partition/issues).
 
 ## Development
 
 ```bash
 npm install          # dev only: TypeScript for type checking
-npm test             # node:test
-npm run typecheck    # JSDoc types via jsconfig.json
+npm test
+npm run typecheck
 claude --plugin-dir .
 ```
 
-Plain JavaScript (ESM) with no runtime dependencies and no build step. The folder layout and design are in [docs/DESIGN.md](docs/DESIGN.md).
-
-## Similar projects
-
-- [Cuota](https://github.com/chechesa-labs/claude-code-cuota): per-folder 5-hour and weekly caps
-- [claude-quota-guard](https://github.com/TakalaWang/claude-quota-guard): per-project weekly percent and dollar budgets
+Plain JavaScript, no runtime dependencies, no build step. Design notes: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Take your share.
+
+## Star History
+
+<a href="https://www.star-history.com/hyuksanglee/partition#history">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=hyuksanglee/partition&type=Date" />
+ </picture>
+</a>
