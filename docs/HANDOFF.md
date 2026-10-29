@@ -58,7 +58,7 @@
 - **절대 막지 않는 것**: Partition 자신의 명령. 사용률 값이 없거나 창이 리셋된 경우(fail-open). hook 오류도 통과.
 - **저장 위치**: `~/.partition/` (config.json 예산·규칙, state.json 사용 기록). 동시 실행 대비 잠금 + 원자적 쓰기.
 - **status line 연결**: `~/.partition/statusline.mjs` 실행기를 settings.json에 등록하고, SessionStart hook이 현재 플러그인 경로를 기록 → 업데이트로 경로가 바뀌어도 동작. 기존 status line은 지우지 않고 감싸서 같이 표시. setup은 **바꿀 내용을 먼저 보여주고 승인 후 적용**, uninstall로 원복.
-- **명령**: `/partition:ui`(설정 창), `/partition:status`, `/partition:budget 30 [--week]`는 hook이 가로채 토큰 0. `/partition:setup`은 settings.json을 바꾸므로 Claude가 계획을 보여주고 승인받는 skill. 터미널용 CLI도 같은 기능(`node src/cli.mjs …`). CLI와 GUI는 같은 기능 모듈을 공유.
+- **명령**: `/partition:ui`(설정 창), `/partition:status`, `/partition:budget 30 [--week]`는 hook이 먼저 실행하고 결과를 Claude에게 넘겨 보여준다(block하면 토큰 0이지만 "차단했습니다" 문구가 붙어서 2026-10-29에 바꿈). `/partition:setup`은 settings.json을 바꾸므로 Claude가 계획을 보여주고 승인받는 skill. 터미널용 CLI도 같은 기능(`node src/cli.mjs …`). CLI와 GUI는 같은 기능 모듈을 공유.
 - **설정 창(GUI)** — 사용자가 원한 형태:
   - 브라우저 페이지가 아니라 **Claude 앱 설정 창처럼 작은 창**(약 640×600). macOS는 기본 WebKit으로 띄운 독립 창(osascript JXA, 설치 불필요, 사용자 Mac에서 동작 확인됨). 실패하면 Chrome 앱 모드/기본 브라우저.
   - 탭 3개: 예산 · 규칙 · 연결.
@@ -73,7 +73,7 @@ Claude Code용 같은 개념이 이미 있다(2026-10-29 검색, 모두 MIT, 스
 - claude-quota-guard (TakalaWang): 프로젝트별 주간 %·달러 예산, 요청·도구 차단
 - cc-kill-switch, cc-limit-guard: 사용자별/계정 전체 단위
 
-차별점 목표: GUI 할당 막대, 배분 방식 투명 공개, 토큰 0 명령, 한국어 README, 나중에 Codex까지.
+차별점 목표: GUI 할당 막대, 배분 방식 투명 공개, 한국어 README, 나중에 Codex까지.
 참고한 구성: Ponytail (DietrichGebert/ponytail, MIT) — README 구성, 마켓플레이스 설치 방식.
 
 ## 5. 아직 확인 못 한 것

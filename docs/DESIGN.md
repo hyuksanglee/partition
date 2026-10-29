@@ -92,7 +92,7 @@ docs/  README.md  README.ko.md  LICENSE  CONTRIBUTING.md
 5. 저장 → `[A 12/30%p · 5h 41%]` + 기존 status line 출력
 
 **UserPromptSubmit**
-1. `/partition:<명령>`이면 명령 실행 → 결과를 reason에 담아 block(토큰 0)
+1. `/partition:<명령>`이면 명령 실행 → 결과를 `additionalContext`로 Claude에게 넘겨 그대로 보여주게 함(응답 하나만큼 씀). block하면 토큰 0이지만 Claude Code가 "차단했습니다" 문구를 붙여 오류처럼 보여서 바꿨다(2026-10-29, 사용자 결정). Ponytail도 같은 방식(block 없이 additionalContext).
 2. 프로젝트 단계 판정: warn(1회 안내) · wrap(`additionalContext`로 마무리 지시) · block(`decision: block`)
 3. 값 없음·리셋·오류 → 통과
 

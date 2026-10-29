@@ -72,7 +72,7 @@ An example, with `web-app` given 30pp of the 5-hour limit:
  ───────────            ─────
  after every response   before every prompt and tool call
    │                      │
-   ├─ reads rate_limits   ├─ /partition:* command? → handle it, no model call
+   ├─ reads rate_limits   ├─ /partition:* command? → run it, Claude shows it
    ├─ reads new tokens    ├─ 80% of budget  → warn once
    │  from the transcript ├─ 3pp before     → ask Claude to wrap up
    └─ splits the increase ├─ at budget      → block
@@ -136,7 +136,7 @@ Needs a **Pro or Max** plan (usage percentages only come to subscribers), **Node
 | `/partition:budget <0-100 \| off> [--week]` | Set this project's share of the 5-hour limit, or the weekly one with `--week`. |
 | `/partition:setup` | Connect the status line. Shows the change first. |
 
-`ui`, `status` and `budget` are answered by a hook before the model is called: **zero tokens**. Claude Code shows the answer under "operation blocked by hook"; that is how it works, not an error.
+`ui`, `status` and `budget` run in a hook before Claude sees the prompt; Claude only shows the result, without tools. That costs one short response (measured: $0.11 in a fresh `claude -p` session; more in a long conversation, because Claude rereads it). A hook could answer with no model call at all, but then Claude Code labels every answer "blocked by hook", which reads like an error.
 
 A project is the top of the git repository you are in, or the folder itself if there is none.
 
@@ -172,10 +172,10 @@ A disk has one size. You still give each part its own.
 
 Experimental. Checked on Claude Code 2.1.312 with a Pro plan (2026-10-29):
 
-- [x] In the terminal, interactive and `claude -p`, `/partition:*` commands are handled by the hook before the model.
+- [x] In the terminal, interactive and `claude -p`, `/partition:*` commands are run by the hook before the model.
 - [x] The status line receives real `rate_limits` values.
 - [x] In one test, Claude followed the wrap-up instruction and did not start new work.
-- [x] In the desktop app's Code tab, `/partition:*` commands are handled by the hook too.
+- [x] In the desktop app's Code tab, `/partition:*` commands are run by the hook too.
 - [x] The Code tab does **not** run custom status lines (`settings.json` pointed to Partition, nothing ran).
 - [x] `claude -p "/usage"` returns the 5-hour and weekly percentages with 0 tokens.
 - [ ] Partition's background `Stop` hook gets those values inside the Code tab.

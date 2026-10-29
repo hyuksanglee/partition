@@ -72,7 +72,7 @@
  ───────────            ─────
  응답이 올 때마다         요청·도구 실행 직전마다
    │                      │
-   ├─ rate_limits 읽기     ├─ /partition:* 명령? → 직접 처리, AI 호출 없음
+   ├─ rate_limits 읽기     ├─ /partition:* 명령? → 실행, Claude가 결과 표시
    ├─ 기록 파일의 새 토큰   ├─ 예산의 80%   → 한 번 경고
    │  읽기                 ├─ 3%p 앞      → 마무리 지시
    └─ 오른 만큼을 토큰     ├─ 예산 도달    → 차단
@@ -136,7 +136,7 @@
 | `/partition:budget <0-100 \| off> [--week]` | 이 프로젝트의 5시간 한도 몫을 정합니다. `--week`를 붙이면 주간 한도 |
 | `/partition:setup` | status line 연결. 바꿀 내용을 먼저 보여줍니다. |
 
-`ui`, `status`, `budget`은 AI를 부르기 전에 hook이 답합니다. **토큰 0**입니다. 답이 "operation blocked by hook" 아래에 표시되는데, 원래 그렇게 동작하는 것이고 오류가 아닙니다.
+`ui`, `status`, `budget`은 Claude가 입력을 보기 전에 hook이 실행하고, Claude는 도구 없이 결과만 보여줍니다. 그래서 짧은 응답 하나만큼 사용량을 씁니다(새 `claude -p` 세션에서 $0.11로 측정, 대화가 길면 다시 읽는 양만큼 더 씁니다). hook만으로 AI 호출 없이 답할 수도 있지만, 그러면 Claude Code가 모든 답에 "훅이 프롬프트를 차단했습니다"를 붙여 오류처럼 보입니다.
 
 프로젝트는 지금 있는 git 저장소의 최상위 폴더이고, git 저장소가 아니면 그 폴더입니다.
 
@@ -172,10 +172,10 @@
 
 실험 단계입니다. Claude Code 2.1.312, Pro 요금제에서 확인했습니다(2026-10-29).
 
-- [x] 터미널의 대화형 모드와 `claude -p`에서 `/partition:*` 명령은 AI보다 hook이 먼저 처리합니다.
+- [x] 터미널의 대화형 모드와 `claude -p`에서 `/partition:*` 명령은 AI보다 hook이 먼저 실행합니다.
 - [x] status line에 실제 `rate_limits` 값이 들어옵니다.
 - [x] 한 번의 테스트에서 Claude가 마무리 지시를 따라 새 작업을 시작하지 않았습니다.
-- [x] 데스크톱 앱 Code 탭에서도 `/partition:*` 명령을 hook이 처리합니다.
+- [x] 데스크톱 앱 Code 탭에서도 `/partition:*` 명령을 hook이 실행합니다.
 - [x] Code 탭은 커스텀 status line을 **실행하지 않습니다** (`settings.json`에 연결했지만 실행되지 않음).
 - [x] `claude -p "/usage"`는 토큰 0으로 5시간·주간 사용률을 돌려줍니다.
 - [ ] Code 탭 안에서 Partition의 백그라운드 `Stop` hook이 그 값을 받는지

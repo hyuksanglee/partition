@@ -63,9 +63,18 @@ test('창이 지났으면 막지 않는다', () => {
   assert.equal(handle({ hook_event_name: 'UserPromptSubmit', cwd: proj, prompt: 'hi' }, nowSec + 7200), null);
 });
 
-test('/partition:budget은 hook이 처리하고 block(토큰 0)', () => {
+test('/partition:budget은 hook이 실행하고, 결과를 Claude에게 넘긴다(차단하지 않음)', () => {
   const out = /** @type {any} */ (prompt('/partition:budget 40'));
-  assert.equal(out.decision, 'block');
-  assert.match(out.reason, /to 40pp/);
-  assert.match(/** @type {any} */ (prompt('/partition:budget 200')).reason, /0 to 100/);
+  assert.equal(out.decision, undefined);
+  const ctx = out.hookSpecificOutput.additionalContext;
+  assert.match(ctx, /already ran \/partition:budget/);
+  assert.match(ctx, /to 40pp/);
+  assert.match(/** @type {any} */ (prompt('/partition:budget 200')).hookSpecificOutput.additionalContext, /0 to 100/);
+});
+
+test('예산을 다 써도 Partition 명령은 막지 않는다', () => {
+  setUsed(99);
+  const out = /** @type {any} */ (prompt('/partition:status'));
+  assert.equal(out.decision, undefined);
+  assert.match(out.hookSpecificOutput.additionalContext, /Partition · A/);
 });

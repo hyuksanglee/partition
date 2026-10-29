@@ -28,8 +28,25 @@ import { FETCHING_ENV, fetchUsage } from './usage.mjs';
 /** status line이나 /usage로 이만큼 안에 값을 받았으면 Stop hook은 다시 받지 않는다. */
 export const USAGE_MIN_INTERVAL_MS = 60_000;
 
-/** hook이 가로채서 토큰 0으로 처리하는 명령. setup은 승인이 필요해서 skill로 간다. */
-const INTERCEPTED = new Set(['ui', 'status', 'budget']);
+/**
+ * hook이 먼저 실행하는 명령. 결과는 Claude에게 넘겨 그대로 보여주게 한다.
+ * (block하면 토큰 0이지만 Claude Code가 "차단했습니다" 문구를 붙여서, 짧은 응답 하나를 쓰는 쪽을 골랐다.)
+ * setup은 승인이 필요해서 skill로 간다.
+ */
+const HANDLED = new Set(['ui', 'status', 'budget']);
+
+/**
+ * @param {string} name
+ * @param {string} result
+ */
+export function commandContext(name, result) {
+  return [
+    `Partition already ran /partition:${name} for the user. Do not run it again and do not use any tools.`,
+    'Reply with only the result below, unchanged, inside a code block:',
+    '',
+    result,
+  ].join('\n');
+}
 
 /**
  * @param {string} prompt
@@ -81,8 +98,9 @@ export function handle(input, nowSec = Date.now() / 1000, deps = {}) {
 
   if (input.hook_event_name === 'UserPromptSubmit') {
     const cmd = parseCommand(input.prompt ?? '');
-    if (cmd && INTERCEPTED.has(cmd.name)) {
-      return { decision: 'block', reason: runCommand(cmd.name, cmd.args, project, lang) };
+    if (cmd && HANDLED.has(cmd.name)) {
+      const result = runCommand(cmd.name, cmd.args, project, lang);
+      return { hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: commandContext(cmd.name, result) } };
     }
     // Partition 자신의 명령(setup 등)은 절대 막지 않는다.
     if (cmd) return null;

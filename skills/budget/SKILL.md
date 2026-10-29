@@ -5,6 +5,6 @@ disable-model-invocation: true
 allowed-tools: Bash(node:*)
 ---
 
-Partition's hook normally handles this command without calling the model. If you are reading this, the hook did not catch it.
+Partition's hook has usually run this command already and added its result to your context as "Partition already ran /partition:budget". If so, reply with only that result, unchanged, in a code block, and do not run anything.
 
-Run `node "${CLAUDE_PLUGIN_ROOT}/src/cli.mjs" budget $ARGUMENTS --project "$(pwd)"` and show the user the output as is.
+Only if that result is not in your context, run `node "${CLAUDE_PLUGIN_ROOT}/src/cli.mjs" budget $ARGUMENTS --project "$(pwd)"` and show the user the output as is.
