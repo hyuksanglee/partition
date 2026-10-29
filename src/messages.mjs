@@ -1,4 +1,6 @@
-// 사용자에게 보이는 문구(ko/en). 언어는 config.language, 'auto'면 LANG/LC_ALL로 정한다.
+// 사용자에게 보이는 문구(ko/en). 언어는 config.language, 'auto'면 LANG/LC_ALL,
+// 그게 없으면(데스크톱 앱이 띄운 hook은 LANG이 비어 있다) macOS 언어 설정으로 정한다.
+import { execFileSync } from 'node:child_process';
 
 const ko = {
   'window.fiveHour': '5시간',
@@ -10,10 +12,16 @@ const ko = {
   'block.tool': 'Partition: 이 프로젝트의 예산을 다 써서 도구 실행을 막았어요.',
   'setup.needed': 'Partition: 터미널에서는 status line을 연결해야 사용량이 바로 반영돼요: /partition:setup (데스크톱 앱 Code 탭은 응답이 끝날 때 따로 받아서 필요 없어요)',
   'status.title': 'Partition · {project}',
-  'status.window': '{window}: 이 프로젝트 {used}%p / 예산 {budget} · 전체 {total}% · 리셋 {reset}',
+  'status.header': '{window} · 리셋 {reset}',
   'status.noData': '{window}: 아직 사용률 값이 없어요 (응답이 한 번 끝나야 해요)',
-  'status.noBudget': '없음',
-  'status.others': '  다른 프로젝트 {used}%p · 미귀속 {unattributed}%p · 추적 전 {before}%p',
+  'status.project': '이 프로젝트',
+  'status.account': '계정 전체',
+  'status.noBudget': '{used}%p · 예산 없음',
+  'status.breakdown': '└ 추적 전 {before} · 이 프로젝트 {used} · 다른 프로젝트 {others} · 미귀속 {unattributed} (%p)',
+  'status.unit': '%p',
+  'stage.warn': '⚠ 경고',
+  'stage.wrap': '⏳ 마무리',
+  'stage.block': '⛔ 차단',
   'status.notConnected': 'status line 미연결: 터미널에서는 /partition:setup 권장 (Code 탭은 필요 없음)',
   'budget.set': '{project}의 {window} 예산을 {value}%p로 정했어요. (설정 가능 0–{max})',
   'budget.cleared': '{project}의 {window} 예산을 해제했어요.',
@@ -35,10 +43,16 @@ const en = {
   'block.tool': 'Partition: this project used its budget, so tool use is blocked.',
   'setup.needed': 'Partition: in the terminal, connect the status line so usage updates right away: /partition:setup (not needed in the desktop app Code tab, which fetches usage after each response)',
   'status.title': 'Partition · {project}',
-  'status.window': '{window}: this project {used}pp / budget {budget} · total {total}% · resets {reset}',
+  'status.header': '{window} · resets {reset}',
   'status.noData': '{window}: no usage value yet (a response has to finish once)',
-  'status.noBudget': 'none',
-  'status.others': '  other projects {used}pp · unattributed {unattributed}pp · before tracking {before}pp',
+  'status.project': 'This project',
+  'status.account': 'Account',
+  'status.noBudget': '{used}pp · no budget',
+  'status.breakdown': '└ before tracking {before} · this project {used} · other projects {others} · unattributed {unattributed} (pp)',
+  'status.unit': 'pp',
+  'stage.warn': '⚠ warning',
+  'stage.wrap': '⏳ wrap up',
+  'stage.block': '⛔ blocked',
   'status.notConnected': 'status line not connected: /partition:setup recommended in the terminal (not needed in the Code tab)',
   'budget.set': 'Set the {window} budget for {project} to {value}pp. (allowed 0–{max})',
   'budget.cleared': 'Cleared the {window} budget for {project}.',
@@ -58,8 +72,24 @@ const en = {
  */
 export function resolveLang(setting = 'auto') {
   if (setting === 'ko' || setting === 'en') return setting;
-  const env = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || '';
+  const env = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || systemLanguage();
   return env.toLowerCase().startsWith('ko') ? 'ko' : 'en';
+}
+
+/** @type {string | undefined} */
+let cachedSystemLanguage;
+
+/** macOS의 첫 번째 선호 언어(예: "ko-KR"). 다른 OS나 실패하면 빈 문자열. 약 10ms라 프로세스당 한 번만. */
+function systemLanguage() {
+  if (cachedSystemLanguage !== undefined) return cachedSystemLanguage;
+  cachedSystemLanguage = '';
+  if (process.platform === 'darwin') {
+    try {
+      const out = execFileSync('defaults', ['read', '-g', 'AppleLanguages'], { encoding: 'utf8', timeout: 1000 });
+      cachedSystemLanguage = /"?([A-Za-z-]+)"?/.exec(out.replace(/[()\s]/g, ''))?.[1] ?? '';
+    } catch {}
+  }
+  return cachedSystemLanguage;
 }
 
 /**
