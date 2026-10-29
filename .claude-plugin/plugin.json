@@ -1,6 +1,6 @@
 {
   "name": "partition",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Per-project budgets for your Claude plan's 5-hour and weekly usage limits. Warns, asks Claude to wrap up, then blocks when a project uses its share.",
   "author": { "name": "hyuksanglee", "url": "https://github.com/hyuksanglee" },
   "repository": "https://github.com/hyuksanglee/partition",

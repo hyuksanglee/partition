@@ -56,14 +56,19 @@ export function status(project, { config, state, lang, nowSec }) {
         : `  ${pad(labels[0], labelWidth)}${bar(w.budget > 0 ? w.used / w.budget : 1)}  ${fmtPp(w.used)} / ${w.budget}${unit}${mark}`,
     );
     lines.push(`  ${pad(labels[1], labelWidth)}${bar(w.totalPct / 100)}  ${fmtPp(w.totalPct)}%`);
-    lines.push(
-      `  ${' '.repeat(labelWidth)}${t(lang, 'status.breakdown', {
-        before: fmtPp(w.beforeTracking),
-        used: fmtPp(w.used),
-        others: fmtPp(w.othersPp),
-        unattributed: fmtPp(w.unattributed),
-      })}`,
-    );
+    // 계정 사용률의 내역. 한 줄로 쓰면 좁은 창에서 줄이 넘어가 정렬이 깨져서 항목마다 한 줄씩.
+    const rows = [
+      [t(lang, 'status.before'), w.beforeTracking],
+      [t(lang, 'status.project'), w.used],
+      [t(lang, 'status.others'), w.othersPp],
+      [t(lang, 'status.unattributed'), w.unattributed],
+    ];
+    const nameWidth = Math.max(...rows.map(([name]) => displayWidth(String(name)))) + 2;
+    const numWidth = Math.max(...rows.map(([, v]) => fmtPp(Number(v)).length));
+    rows.forEach(([name, v], i) => {
+      const branch = i === rows.length - 1 ? '└' : '├';
+      lines.push(`  ${' '.repeat(labelWidth)}${branch} ${pad(String(name), nameWidth)}${fmtPp(Number(v)).padStart(numWidth)}${unit}`);
+    });
   }
   if (!connected) lines.push('', t(lang, 'status.notConnected'));
   return { text: lines.join('\n'), data: { project, connected, ...result } };
