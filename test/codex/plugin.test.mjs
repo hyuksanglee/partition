@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -25,7 +26,7 @@ test('two-command plugin install loads skills/hooks and waits for its settings w
     cli(['plugin', 'marketplace', 'add', PLUGIN_ROOT]);
     const installed = JSON.parse(cli(['plugin', 'add', 'partition@partition', '--json']));
     assert.equal(installed.pluginId, 'partition@partition');
-    assert.equal(installed.version, '0.3.0');
+    assert.equal(installed.version, JSON.parse(readFileSync(new URL('../../.codex-plugin/plugin.json', import.meta.url), 'utf8')).version);
     const review = await reviewDesktop(root);
     assert.equal(review.source, 'plugin');
     assert.equal(review.complete, true);

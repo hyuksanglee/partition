@@ -1,12 +1,19 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { CLI_PATH } from '../root.mjs';
+import { findClaudePid, isAlive } from '../owner.mjs';
+
+/** 주인 프로세스(claude)가 살아 있는지 이만큼마다 본다. */
+const OWNER_CHECK_MS = 2000;
 
 /**
  * 설정 창을 별도 프로세스로 띄우고 바로 돌아온다(hook·skill에서 쓰기 위해).
+ * 띄운 claude 프로세스가 끝나면 창도 닫히도록 그 pid를 넘긴다.
  * @param {string} project
+ * @param {number | null} [ownerPid]
  */
-export function openUiDetached(project) {
-  const child = spawn(process.execPath, [CLI_PATH, 'ui', '--project', project], { detached: true, stdio: 'ignore' });
+export function openUiDetached(project, ownerPid = findClaudePid()) {
+  const args = [CLI_PATH, 'ui', '--project', project, ...(ownerPid ? ['--owner', String(ownerPid)] : [])];
+  const child = spawn(process.execPath, args, { detached: true, stdio: 'ignore' });
   child.unref();
 }
 
@@ -67,9 +74,9 @@ export function settingsWindow(project) {
 /**
  * 이 프로세스에서 서버와 창을 띄우고 창이 닫힐 때까지 기다린다.
  * @param {string} project
- * @param {{onReady?: (result: UiLaunch) => void}} [options]
+ * @param {{onReady?: (result: UiLaunch) => void, ownerPid?: number}} [options] ownerPid가 끝나면 창도 닫는다
  */
-export async function openUi(project, { onReady } = {}) {
+export async function openUi(project, { onReady, ownerPid } = {}) {
   const { startServer } = await import('../ui/server.mjs');
   const { openWindow } = await import('../ui/window.mjs');
   const server = await startServer({ project });
@@ -77,6 +84,11 @@ export async function openUi(project, { onReady } = {}) {
   let win;
   const stop = () => { win?.child?.kill(); server.close(); };
   process.once('SIGTERM', stop);
+  const watch = ownerPid
+    ? setInterval(() => {
+        if (!isAlive(ownerPid)) stop();
+      }, OWNER_CHECK_MS)
+    : undefined;
   try {
     const url = server.url;
     win = await openWindow(url);
@@ -85,6 +97,7 @@ export async function openUi(project, { onReady } = {}) {
     onReady?.({ url, mode: win.mode });
     await server.closed;
   } finally {
+    clearInterval(watch);
     process.removeListener('SIGTERM', stop);
     stop();
   }

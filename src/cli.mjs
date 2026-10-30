@@ -98,7 +98,10 @@ async function main() {
         openUiDetached(project);
         return print("Partition settings window is opening. Close the window when you're done.");
       }
-      return openUi(project);
+      {
+        const owner = takeOption(args, '--owner');
+        return openUi(project, owner ? { ownerPid: Number(owner) } : {});
+      }
     case 'setup':
       return print(args.includes('--apply') ? setup() : setupPlanText());
     case 'uninstall':
