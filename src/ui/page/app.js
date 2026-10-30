@@ -1,4 +1,5 @@
 // Partition 설정 창. 빌드 없이 그대로 쓰는 화면 스크립트.
+import { initialTab, budgetSaveImpact } from './policy.mjs';
 const TOKEN = location.hash.slice(1);
 const $ = (id) => document.getElementById(id);
 
@@ -8,6 +9,8 @@ const TEXT = {
     'window.fiveHour': '5시간', 'window.sevenDay': '주간',
     'bar.title': '한도 전체 100%p', 'bar.free': '미할당', 'bar.other': '회색: 기타 사용', 'bar.allocated': '할당 {n}%p',
     'budget.clear': '할당 해제', 'budget.save': '저장', 'budget.cancel': '취소', 'budget.unsaved': '저장하지 않은 변경', 'budget.range': '설정 가능 0–{max}%p (0 = 제한 없음)', 'budget.none': '할당 없음',
+    'budget.over': '이미 사용량이 새 예산을 초과했습니다.', 'budget.reached': '이미 사용량이 새 예산에 도달했습니다.',
+    'budget.blocksNext': '저장하면 다음 요청과 도구 실행부터 차단됩니다.', 'budget.warningOnly': '차단이 꺼져 있어 경고와 마무리 지시만 적용됩니다.', 'budget.saveBlocked': '차단 적용하고 저장',
     'current': '현재',
     'stats.used': '이 창에서 쓴 양', 'stats.budget': '예산', 'stats.total': '계정 전체 사용률',
     'stats.others': '다른 프로젝트', 'stats.unattributed': '미귀속 (웹·다른 기기 등)', 'stats.before': '기타 (Partition 적용 전)',
@@ -30,6 +33,8 @@ const TEXT = {
     'window.fiveHour': '5-hour', 'window.sevenDay': 'Weekly',
     'bar.title': 'Whole limit 100pp', 'bar.free': 'Unallocated', 'bar.other': 'gray: other usage', 'bar.allocated': '{n}pp allocated',
     'budget.clear': 'Clear', 'budget.save': 'Save', 'budget.cancel': 'Cancel', 'budget.unsaved': 'Unsaved change', 'budget.range': 'Allowed 0–{max}pp (0 = no limit)', 'budget.none': 'No budget',
+    'budget.over': 'Usage already exceeds the new budget.', 'budget.reached': 'Usage has already reached the new budget.',
+    'budget.blocksNext': 'Saving blocks subsequent prompts and tool calls.', 'budget.warningOnly': 'Blocking is off; only warnings and wrap-up instructions apply.', 'budget.saveBlocked': 'Save and apply block',
     'current': 'current',
     'stats.used': 'Used in this window', 'stats.budget': 'Budget', 'stats.total': 'Account usage',
     'stats.others': 'Other projects', 'stats.unattributed': 'Unattributed (web, other devices…)', 'stats.before': 'Other (before Partition)',
@@ -37,7 +42,7 @@ const TEXT = {
     'stage.ok': 'OK', 'stage.warn': 'Warning', 'stage.wrap': 'Wrap up', 'stage.block': 'Blocked', 'stage.none': 'No limit',
     'note.attribution': 'When usage goes up, the increase is split by the tokens each project used in between. Token weights borrow API price ratios; that is an assumption and may differ from reality.',
     'rules.warn': 'Warn at (of budget)', 'rules.warn.hint': 'Shown once when the project reaches this share.',
-    'rules.margin': 'Wrap up when left', 'rules.margin.hint': 'When this much or less is left, Claude is asked to wrap up.',
+    'rules.margin': 'Wrap up when left', 'rules.margin.hint': 'When this much or less is left, the model is asked to wrap up.',
     'rules.block': 'Block at budget', 'rules.block.hint': 'Off: warn and wrap up only. It can overshoot by one response.',
     'rules.language': 'Language', 'lang.auto': 'System',
     'rules.weights': 'Token weights', 'rules.weights.hint': 'Input · cache write · cache read · output. Edit in ~/.partition/config.json.',
@@ -53,6 +58,11 @@ let snap = null;
 let win = 'fiveHour';
 let selected = null;
 let draft = null; // 슬라이더를 움직이는 동안의 값
+let desktopReview = null;
+let desktopError = '';
+let desktopBusy = false;
+let savingBudget = false;
+let tabTouched = false;
 
 const tr = (key, vars = {}) => (TEXT[snap?.lang ?? 'en'][key] ?? key).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 const pp = (n) => String(Math.round(n * 10) / 10);
@@ -198,21 +208,45 @@ function isDirty() {
 /** 창 아래 고정 바: 예산 탭에서만 보이고, 바꾼 값이 없으면 버튼은 꺼 둔다. */
 function renderSaveRow() {
   const dirty = isDirty();
+  const impact = dirty ? saveImpact(draft) : null;
+  const warning = $('budget-warning');
+  warning.hidden = !impact;
+  warning.textContent = impact
+    ? `${tr(project().check.windows[win].used > draft ? 'budget.over' : 'budget.reached')} ${tr(impact === 'block' ? 'budget.blocksNext' : 'budget.warningOnly')}`
+    : '';
   $('save-status').textContent = dirty ? tr('budget.unsaved') : '';
-  $('budget-save').disabled = !dirty;
-  $('budget-cancel').disabled = !dirty;
+  $('budget-save').textContent = tr(impact === 'block' ? 'budget.saveBlocked' : 'budget.save');
+  $('budget-save').disabled = !dirty || savingBudget;
+  $('budget-cancel').disabled = !dirty || savingBudget;
+  for (const node of document.querySelectorAll('#window-switch button, #project-select, #budget-slider, #budget-number, #budget-clear')) node.disabled = savingBudget;
+}
+
+function saveImpact(value) {
+  const p = project();
+  const c = p.check.windows[win];
+  return budgetSaveImpact({ value, used: c.used, hasData: c.hasData, block: snap.rules.block, max: p.ranges[win].max });
 }
 
 async function saveBudget(value) {
-  draft = null;
+  if (savingBudget) return;
+  const shownImpact = saveImpact(value);
+  savingBudget = true;
+  renderSaveRow();
   try {
+    // A draft can outlive a usage/reset update. Show any new consequence before saving.
+    snap = await api('state');
+    const latestImpact = saveImpact(value);
+    if (latestImpact && latestImpact !== shownImpact) return;
     const r = await api('budget', { project: selected, window: win, value });
     snap = r.state;
+    draft = null;
     toast(tr('saved'));
   } catch (err) {
     toast(err.message || tr('error'));
+  } finally {
+    savingBudget = false;
+    render();
   }
-  render();
 }
 
 // ---- 규칙 탭 ----
@@ -241,34 +275,108 @@ async function saveRules(patch) {
 
 function renderConnection() {
   const c = snap.connection;
+  const codex = snap.provider === 'codex';
   $('conn-badge').className = `badge ${c.connected ? 'on' : ''}`;
-  $('conn-badge').textContent = tr(c.connected ? 'conn.on' : 'conn.off');
+  $('conn-badge').textContent = codex
+    ? (snap.lang === 'ko' ? (desktopReview?.ready ? (c.observed ? '훅 실행 확인됨' : '승인됨 · 실행 대기') : c.connected ? '등록됨 · 신뢰 상태 확인 필요' : '훅 등록 필요')
+      : (desktopReview?.ready ? (c.observed ? 'Hook execution observed' : 'Trusted · awaiting execution') : c.connected ? 'Registered · check trust status' : 'Hooks not registered'))
+    : tr(c.connected ? 'conn.on' : 'conn.off');
   stats($('conn-stats'), [
     [tr('conn.last'), c.lastStatusLineAt ? fmtTime(c.lastStatusLineAt / 1000) : tr('conn.never')],
     [tr('conn.root'), c.pluginRoot],
   ]);
-  $('plan-title').textContent = tr(c.connected ? 'conn.uninstallTitle' : 'conn.setupTitle');
+  $('plan-title').textContent = codex && !c.connected
+    ? (snap.lang === 'ko' ? 'Codex hooks.json에 추가할 내용' : 'Changes to Codex hooks.json')
+    : tr(c.connected ? 'conn.uninstallTitle' : 'conn.setupTitle');
   $('plan').textContent = c.connected ? c.uninstallPlan : c.setupPlan;
   $('plan-apply').textContent = tr(c.connected ? 'conn.undo' : 'conn.apply');
+  $('plan-apply').hidden = !!c.pluginManaged;
+  renderDesktopConnection();
+}
+
+function renderDesktopConnection() {
+  const show = snap.provider === 'codex';
+  $('desktop-connection').hidden = !show;
+  if (!show) return;
+  const ko = snap.lang === 'ko';
+  $('desktop-title').textContent = ko ? 'GPT 앱 연결' : 'Connect the GPT desktop app';
+  $('desktop-check').textContent = ko ? '상태 확인' : 'Check status';
+  $('desktop-check').disabled = desktopBusy;
+  $('desktop-help').textContent = ko
+    ? '아래 실행 명령과 이벤트를 검토하고 승인하면, GPT 앱의 로컬 Codex 대화에서 예산을 적용합니다. 터미널 명령 입력은 필요하지 않습니다.'
+    : 'Review the exact commands and events below to enable budgets in local Codex chats in the GPT desktop app. No terminal commands are required.';
+  const r = desktopReview;
+  $('desktop-status').textContent = desktopError || (desktopBusy ? (ko ? '확인하는 중…' : 'Checking…')
+    : !r ? (ko ? '연결 상태를 확인해 주세요.' : 'Check the connection status.')
+      : !r.hooksEnabled ? (ko ? 'Codex 설정에서 훅이 비활성화되어 있습니다.' : 'Lifecycle hooks are disabled in Codex settings.')
+      : r.ready ? (ko ? '신뢰 승인 완료 · 새 로컬 대화에서 실행을 확인해 주세요.' : 'Trusted · verify execution in a new local chat.')
+        : !r.complete ? (ko ? '훅 등록이 필요합니다. 아래 연결 내용을 확인해 주세요.' : 'Register the hooks using the setup plan below.')
+          : (ko ? '훅은 등록되었고, 신뢰 승인을 기다리고 있습니다.' : 'Hooks are registered and waiting for trust approval.'));
+  $('desktop-review').textContent = r ? r.hooks.map((h) => `${h.eventName} · ${h.trustStatus}${h.enabled ? '' : ' · disabled'}\n${h.command}\n${h.sourcePath}\n${h.currentHash}`).join('\n\n') : '';
+  const needsConsent = !!r?.complete && r.hooksEnabled && !r.ready;
+  $('desktop-consent-row').hidden = !needsConsent;
+  $('desktop-approve').hidden = !needsConsent;
+  $('desktop-consent-text').textContent = ko
+    ? '위 훅을 검토했습니다. 로컬 세션의 사용량을 읽고, 설정한 프로젝트 예산에 따라 새 요청과 도구 실행을 제한하는 것을 허용합니다.'
+    : 'I reviewed these hooks and allow them to read local session usage and limit new prompts and tool calls according to my project budgets.';
+  $('desktop-approve').textContent = ko ? '검토한 훅 승인하고 연결' : 'Trust reviewed hooks and connect';
+  $('desktop-approve').disabled = desktopBusy || !$('desktop-consent').checked;
+}
+
+async function checkDesktopConnection() {
+  desktopBusy = true;
+  desktopError = '';
+  $('desktop-consent').checked = false;
+  renderDesktopConnection();
+  try { desktopReview = await api('codex/review'); }
+  catch (err) { desktopError = err.message; }
+  desktopBusy = false;
+  renderDesktopConnection();
 }
 
 // ---- 공통 ----
 
 function render() {
   document.documentElement.lang = snap.lang;
+  document.title = snap.provider === 'codex' ? 'Partition · Codex' : 'Partition';
+  $('brand').textContent = document.title;
   for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = tr(node.dataset.i18n);
+  const hint = document.querySelector('[data-i18n="rules.weights.hint"]');
+  hint.textContent = (snap.lang === 'ko' ? '입력·캐시 생성·캐시 읽기·출력. 설정 파일: ' : 'Input · cache write · cache read · output. Config: ') + snap.configPath;
+  if (snap.provider === 'codex') document.querySelector('[data-i18n="conn.statusline"]').textContent = snap.lang === 'ko' ? 'Codex 훅' : 'Codex hooks';
   for (const node of document.querySelectorAll('.unit.pp')) node.textContent = tr('pp');
   renderBudget();
   renderRules();
   renderConnection();
 }
 
+function activateTab(name) {
+  for (const tab of document.querySelectorAll('nav button')) tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+  for (const panel of document.querySelectorAll('[role=tabpanel]')) panel.hidden = panel.id !== `tab-${name}`;
+  $('save-bar').hidden = name !== 'budget';
+}
+
 function bind() {
+  $('desktop-check').addEventListener('click', checkDesktopConnection);
+  $('desktop-consent').addEventListener('change', renderDesktopConnection);
+  $('desktop-approve').addEventListener('click', async () => {
+    if (!$('desktop-consent').checked || !desktopReview || desktopBusy) return;
+    desktopBusy = true;
+    desktopError = '';
+    renderDesktopConnection();
+    try {
+      const r = await api('codex/approve', { accepted: true, reviewToken: desktopReview.reviewToken });
+      desktopReview = r.review;
+      snap = r.state;
+      $('desktop-consent').checked = false;
+    } catch (err) { desktopError = err.message; }
+    desktopBusy = false;
+    render();
+  });
   for (const tab of document.querySelectorAll('nav button')) {
     tab.addEventListener('click', () => {
-      for (const t of document.querySelectorAll('nav button')) t.setAttribute('aria-selected', String(t === tab));
-      for (const p of document.querySelectorAll('[role=tabpanel]')) p.hidden = p.id !== `tab-${tab.dataset.tab}`;
-      $('save-bar').hidden = tab.dataset.tab !== 'budget';
+      tabTouched = true;
+      activateTab(tab.dataset.tab);
     });
   }
   // 창이나 프로젝트를 바꾸면 저장하지 않은 값은 버린다.
@@ -339,11 +447,22 @@ async function refresh() {
   } catch {}
 }
 
+// 편집 중에는 갱신을 건너뛰어도 페이지 생존 신호는 계속 보낸다.
+// 초기 데이터 읽기가 실패해도 이 타이머는 등록되어 있어야 한다.
+setInterval(() => { api('heartbeat', {}).catch(() => {}); }, 10_000);
+
 (async () => {
   bind();
   snap = await api('state');
   selected = snap.current;
   render();
-  // heartbeat 겸 새 사용량 반영
+  const requested = new URLSearchParams(location.search).get('tab');
+  activateTab(initialTab({ connected: snap.connection.connected, requested }));
+  if (snap.provider === 'codex') {
+    await checkDesktopConnection();
+    // A slow trust check must not override a tab the user already selected.
+    if (!tabTouched) activateTab(initialTab({ connected: snap.connection.connected, ready: desktopReview?.ready, requested }));
+  }
+  // 저장하지 않은 초안은 유지하며 새 사용량만 반영한다.
   setInterval(refresh, 10_000);
 })();

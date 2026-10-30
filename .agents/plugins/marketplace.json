@@ -1,0 +1,20 @@
+{
+  "name": "partition",
+  "interface": {
+    "displayName": "Partition"
+  },
+  "plugins": [
+    {
+      "name": "partition",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

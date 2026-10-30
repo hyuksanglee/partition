@@ -11,6 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/hyuksanglee/partition?style=flat-square&color=111111&label=stars" alt="Stars">
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-111111?style=flat-square" alt="Claude Code plugin">
+  <img src="https://img.shields.io/badge/Codex-plugin-111111?style=flat-square" alt="Codex plugin">
   <img src="https://img.shields.io/badge/node-18%2B-111111?style=flat-square" alt="Node 18+">
   <img src="https://img.shields.io/badge/status-experimental-111111?style=flat-square" alt="Experimental">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
@@ -24,8 +25,8 @@
 </p>
 
 <p align="center">
-  <strong>Claude Code의 5시간·주간 한도를 프로젝트마다 나눠 줍니다.</strong><br>
-  <strong>선에 가까워지면 경고하고, Claude에게 마무리를 시키고, 그 프로젝트를 멈춥니다.</strong><br>
+  <strong>Claude Code 또는 Codex의 5시간·주간 한도를 프로젝트마다 나눠 줍니다.</strong><br>
+  <strong>선에 가까워지면 경고하고, AI에게 마무리를 시키고, 그 프로젝트를 멈춥니다.</strong><br>
   <sub>다른 프로젝트는 계속 일합니다.</sub>
 </p>
 
@@ -66,6 +67,10 @@
 | `api-server` | 리셋까지 대기 | 자기 몫 40%p가 그대로 |
 
 ## 동작 방식
+
+아래는 Claude 연결 방식입니다. Codex는 수명 주기 훅으로 로컬 세션의 사용량을
+읽습니다. [Codex 데스크톱](#codex-데스크톱-실험-단계)을 참고하세요.
+두 서비스의 계정 한도와 프로젝트 예산·사용 기록은 각각 분리합니다.
 
 ```
  status line            hooks
@@ -127,6 +132,9 @@ Partition · web-app
 
 ## 설치
 
+Codex는 [두 명령으로 마켓플레이스 설치](#codex-데스크톱-실험-단계)를 사용하세요.
+아래 절차는 Claude Code용입니다.
+
 **Claude Code**에서, 두 번에 나눠 입력합니다.
 
 ```
@@ -170,7 +178,7 @@ Partition · web-app
 ## FAQ
 
 **정말 요금제 한도를 나누나요?**
-아니요. 한도는 Anthropic 쪽에서 하나로 관리됩니다. Partition은 내 컴퓨터에서 프로젝트별로 세고, 자기 몫을 다 쓴 프로젝트를 멈춥니다.
+아니요. 실제 계정 한도는 각 서비스가 관리합니다. Partition은 내 컴퓨터에서 프로젝트별로 세고, 자기 몫을 다 쓴 프로젝트를 멈춥니다. Claude와 Codex의 예산은 각각 독립적입니다.
 
 **정확히 30%p에서 멈추나요?**
 아니요. 단계 사이에서 동작하므로 응답이나 도구 실행 하나만큼 넘을 수 있습니다. 3%p 앞의 마무리 단계가 그 차이를 줄이려고 있습니다.
@@ -185,7 +193,7 @@ Partition · web-app
 명령과 hook은 됩니다. Code 탭은 status line을 실행하지 않아서, 대신 응답이 끝날 때마다 `claude -p "/usage"`로 사용률을 읽습니다. 이 출력은 사람이 읽는 문장이라, 문구가 바뀌면 Partition은 그곳에서 사용량을 세지 못하고 고쳐질 때까지 모두 통과시킵니다.
 
 **Codex는요?**
-나중에. Codex도 같은 5시간·주간 사용률을 기록하므로 계획에 있습니다.
+데스크톱용 실험적 연결부가 포함되어 있습니다. Claude와 예산·사용 기록을 분리합니다. 아래 Codex 데스크톱 항목을 참고하세요.
 
 **어떻게 지우나요?**
 `/partition:ui` → **연결** → **원래대로**를 누르면 원래 status line으로 돌아갑니다. 그다음 `/plugin uninstall partition@partition`, 원하면 `~/.partition/`도 지우세요.
@@ -209,6 +217,107 @@ Partition · web-app
 - [ ] 한 창 전체에 걸쳐 프로젝트별 배분이 실제와 얼마나 맞는지
 
 결과나 문제는 [Issues](https://github.com/hyuksanglee/partition/issues)에 알려 주세요.
+
+## Codex 데스크톱 (실험 단계)
+
+다음 두 명령으로 설치합니다.
+
+```bash
+codex plugin marketplace add hyuksanglee/partition
+codex plugin add partition@partition
+```
+
+Partition의 훅을 검토·신뢰 승인한 뒤 새 로컬 대화를 시작하세요. CLI의 `/hooks`
+또는 Partition 설정의 **연결** 탭에서 검토할 수 있습니다. 이후 대화창에서:
+
+- `/partition:ui` — 별도 설정 창 열기 (`$partition:ui` 스킬도 지원)
+- `/partition:status` — 사용량 확인
+- `/partition:budget 30` — 현재 프로젝트의 5시간 예산을 30%p로 설정
+
+macOS에서는 UI 명령이 별도 `Partition.app` 창을 열고 이름·아이콘·준비 상태를
+확인한 뒤 성공으로 안내합니다. 다른 운영체제에서는 Chrome 앱 모드나 기본
+브라우저를 사용합니다. 앱의 브라우저 패널은 `ui --serve`로 선택할 수 있습니다.
+훅 실행 환경의 PATH에 Node.js 18 이상이 있어야 합니다. 플러그인 명령을 지원하는
+Codex와 수명 주기 훅을 지원하는 로컬 데스크톱 엔진이 필요합니다.
+
+이전 사용자 훅 방식으로 연결했다면 해당 저장소에서
+`node src/cli.mjs --provider codex uninstall --apply`로 그 훅을 제거한 뒤
+플러그인 훅을 활성화하세요. 예산과 사용 기록은 보존합니다. 두 방식을 중복
+등록하지 마세요.
+
+Codex의 로컬 세션 JSONL에서 `token_count` 이벤트를 읽습니다. 사용량을
+수집하기 위해 모델을 호출하지 않습니다. Claude 데이터는 기존 `~/.partition/`에,
+Codex 예산·규칙·사용 기록은 `~/.partition/codex/`에 따로 저장합니다.
+
+플러그인 설치 없이 개발할 때는 저장소 폴더에서 사용자 훅 연결을 사용할 수 있습니다.
+
+```bash
+node src/cli.mjs --provider codex setup --plan
+node src/cli.mjs --provider codex setup --apply
+```
+
+`$CODEX_HOME/hooks.json`(기본 `~/.codex/hooks.json`)에 Partition 훅을 추가하며,
+다른 훅은 보존합니다. 설정 창에서 **연결 → 상태 확인**을 누르고, 표시된 실행
+명령과 이벤트를 검토하세요. 확인란을 선택하고 **검토한 훅 승인하고 연결**을 누르면
+GPT 앱과 같은 엔진의 공식 API로 해당 훅만 신뢰 승인합니다. 다른 설정은 보존하며,
+정의가 바뀌면 다시 검토해야 합니다. 승인 후 새 로컬 데스크톱 대화를 시작하세요.
+CLI의 `/hooks`로 승인하는 기존 방법도 사용할 수 있습니다.
+설정 파일 등록과 신뢰 승인, 실제 실행 확인은 별개입니다.
+
+```bash
+node src/cli.mjs --provider codex ui --detach --project /프로젝트/경로
+node src/cli.mjs --provider codex budget 30 --project /프로젝트/경로
+node src/cli.mjs --provider codex status --project /프로젝트/경로
+node src/cli.mjs --provider codex uninstall --plan
+node src/cli.mjs --provider codex uninstall --apply
+```
+
+주간 예산에는 `--week`를 붙이고, `0`으로 제한을 해제합니다. 예산을 지정하지
+않은 프로젝트는 기록만 하며 차단하지 않습니다. 연결 탭에서 훅 실행이 기록됐는지
+볼 수 있습니다. 제거는 Partition이 직접 등록한 훅만 지웁니다.
+
+Codex도 `ui --detach`나 `/partition:ui`를 실행하면 macOS에서 Claude와 같은
+별도 기본 WebKit 창이 열립니다. 창이 표시됐다는 준비 신호를 받은 뒤에만
+성공으로 안내합니다.
+창은 `Partition.app`으로 실행되어 Dock 이름과 아이콘도 Partition으로
+표시됩니다. 첫 실행 시 macOS 기본 도구로 앱을 만들고 이후에는 재사용합니다.
+Dock 아이콘은 다른 앱과 크기가 어울리도록 투명 여백을 포함합니다.
+연결과 신뢰 승인이 끝났으면 예산 탭부터, 설정이 필요하면 연결 탭부터 열립니다.
+프로젝트에 기록된 사용량보다 낮은 예산도 설정할 수 있으며, 저장 전에 다음
+요청의 차단 여부를 안내합니다. 적용 전 계정 사용량은 이 판단에서 제외하고,
+`0`은 계속 제한 해제를 뜻합니다.
+설정 창은 편집 중이거나 잠시 다른 앱을 사용해도 자동 종료되지 않습니다.
+직접 창을 닫을 때까지 유지합니다. 브라우저 모드도 편집 초안과 생존 신호를
+분리해 저장하지 않은 변경 때문에 서버가 종료되지 않도록 했습니다.
+
+앱 옆의 브라우저 패널에 띄우려면 `node src/cli.mjs --provider codex ui --serve`로
+설정 서버를 실행하고, 출력된 로컬 URL을 앱 패널에서 여세요. 화면을 연 뒤에는
+터미널 명령을 입력하지 않고 검토·승인할 수 있습니다.
+
+`.agents/plugins/marketplace.json`이 Codex 마켓플레이스를 제공하고,
+`.codex-plugin/plugin.json`이 `hooks/codex.json`과 `codex-skills/`를 연결합니다.
+플러그인으로 설치했다면 사용자 훅 setup을 중복 실행하지 마세요.
+플러그인의 `$partition:ui` 스킬로 별도 설정 창을 열 수 있습니다.
+`/partition:*` 원문이 훅에 전달되면 직접 처리하지만, 클라이언트의 슬래시 명령
+전달 방식은 보장하지 않습니다. 위 터미널 명령은 이 전달 방식과 무관하게 동작합니다.
+
+자동 테스트로 프로토콜·파싱·배분·설정 보존·Claude 회귀 동작을 확인했고,
+로컬 세션 기록 읽기와 임시 환경의 CLI 플러그인 설치도 확인했습니다. 설치된
+데스크톱 엔진으로 임시 훅을 승인하고, 예산 초과 요청이 모델 생성 전에 차단되는
+통합 테스트도 통과했습니다. 실제 사용자 환경의 훅은 별도로 직접 검토·승인해야
+합니다. 실제 계정 사용량의 프로젝트별 배분 정확도는 계속 관찰이 필요합니다.
+JSONL은 안정된 공개 API가 아니며, 알 수 없는 한도 종류는 집계하지 않습니다.
+호스팅 도구나 일부 특수 경로는 도구 훅을 거치지 않고, 진행 중인 모델 응답은
+중간에 멈출 수 없습니다. 기록 없음·창 만료·연결 오류는 통과시킵니다.
+로컬 오케스트레이션이 없는 클라우드 대화는 지원 범위에 포함하지 않습니다.
+
+2026-10-30 기준 자동 테스트 98개와 타입 검사가 통과했습니다. 마켓플레이스
+설치, 훅 신뢰·차단, 서비스별 사용 기록 분리, 앱 이름·서명·아이콘, 기본 탭과
+낮은 예산 저장을 검사합니다. 실제 설정 창도 저장 전 초안을 둔 상태로 2분 이상
+유지되는 것을 확인했습니다.
+
+근거: [Codex 훅](https://learn.chatgpt.com/docs/hooks),
+[플러그인 패키징](https://developers.openai.com/plugins/build/plugins).
 
 ## 개발
 

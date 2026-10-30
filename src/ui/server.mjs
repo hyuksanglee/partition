@@ -1,5 +1,5 @@
 // 설정 창용 로컬 서버. 127.0.0.1 전용, 무작위 토큰, Host 검사.
-// 창이 닫히거나 페이지 신호(heartbeat)가 끊기면 종료한다.
+// 네이티브 창은 프로세스 수명을 따르고, 브라우저만 heartbeat로 종료한다.
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -13,13 +13,16 @@ import { check } from '../commands/check.mjs';
 import { setProjectBudget } from '../commands/budget.mjs';
 import { setRules } from '../commands/rules.mjs';
 import { setup, setupPlanText, uninstall, uninstallPlanText } from '../commands/setup.mjs';
-import { isConnected } from '../claude/settings.mjs';
+import { isConnected } from '../commands/setup.mjs';
+import { provider, paths } from '../store/paths.mjs';
 import { PLUGIN_ROOT } from '../root.mjs';
+import { reviewDesktop, approveDesktop } from '../codex/desktop.mjs';
 
 const PAGE_DIR = new URL('./page/', import.meta.url);
 const FILES = /** @type {const} */ ({
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/policy.mjs': ['policy.mjs', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
 });
 const HEARTBEAT_TIMEOUT_MS = 30_000;
@@ -32,6 +35,7 @@ export function snapshot(project) {
   const config = loadConfig();
   const state = loadState();
   const nowSec = Date.now() / 1000;
+  const pluginManaged = provider() === 'codex' && state.codexHookSource === 'plugin';
   const known = new Set([project, ...Object.keys(config.budgets)]);
   for (const key of WINDOW_KEYS) for (const p of Object.keys(state.windows[key]?.byProject ?? {})) known.add(p);
   /** @param {import('../core/window.mjs').WindowKey} k */
@@ -45,17 +49,21 @@ export function snapshot(project) {
   }));
   return {
     current: project,
+    provider: provider(),
+    configPath: paths.config,
     lang: resolveLang(config.language),
     language: config.language,
     rules: config.rules,
     weights: config.weights,
     projects,
     connection: {
-      connected: isConnected(),
-      lastStatusLineAt: state.lastStatusLineAt ?? null,
+      connected: isConnected() || pluginManaged,
+      pluginManaged,
+      lastStatusLineAt: provider() === 'codex' ? Math.max(state.lastCodexHookAt ?? 0, state.lastCodexEvent?.at ?? 0) || null : state.lastStatusLineAt ?? null,
+      observed: provider() === 'codex' && !!(state.lastCodexHookAt || state.lastCodexEvent),
       pluginRoot: loadInstall().pluginRoot ?? PLUGIN_ROOT,
-      setupPlan: setupPlanText(),
-      uninstallPlan: uninstallPlanText(),
+      setupPlan: pluginManaged ? 'Hooks are bundled with the Partition plugin. Review and trust them in Codex; no user-level setup is needed.' : setupPlanText(),
+      uninstallPlan: pluginManaged ? 'Hooks are managed by the Partition plugin. Disable or uninstall that plugin in Codex to remove them.' : uninstallPlanText(),
     },
   };
 }
@@ -74,11 +82,12 @@ async function readBody(req) {
 }
 
 /**
- * @param {{ project: string, port?: number }} opts
+ * @param {{ project: string, port?: number, heartbeatTimeoutMs?: number }} opts
  */
-export function startServer({ project, port = 0 }) {
+export function startServer({ project, port = 0, heartbeatTimeoutMs = HEARTBEAT_TIMEOUT_MS }) {
   const token = randomBytes(24).toString('hex');
   let lastBeat = Date.now();
+  let windowManaged = false;
   /** @type {() => void} */
   let resolveClosed = () => {};
   const closed = new Promise((/** @type {(v?: unknown) => void} */ r) => (resolveClosed = r));
@@ -110,6 +119,13 @@ export function startServer({ project, port = 0 }) {
       lastBeat = Date.now();
       const lang = resolveLang(loadConfig().language);
       if (req.method === 'GET' && url.pathname === '/api/state') return send(200, snapshot(project));
+      if (provider() === 'codex' && req.method === 'GET' && url.pathname === '/api/codex/review') {
+        return send(200, await reviewDesktop(project));
+      }
+      if (provider() === 'codex' && req.method === 'POST' && url.pathname === '/api/codex/approve') {
+        const review = await approveDesktop(project, await readBody(req));
+        return send(200, { review, state: snapshot(project) });
+      }
       if (req.method === 'POST' && url.pathname === '/api/heartbeat') return send(200, { ok: true });
       if (req.method === 'POST' && url.pathname === '/api/budget') {
         const b = await readBody(req);
@@ -133,8 +149,8 @@ export function startServer({ project, port = 0 }) {
   });
 
   const timer = setInterval(() => {
-    if (Date.now() - lastBeat > HEARTBEAT_TIMEOUT_MS) close();
-  }, 5000);
+    if (!windowManaged && Date.now() - lastBeat > heartbeatTimeoutMs) close();
+  }, Math.min(5000, Math.max(10, heartbeatTimeoutMs / 4)));
   timer.unref();
 
   function close() {
@@ -143,12 +159,17 @@ export function startServer({ project, port = 0 }) {
     server.closeAllConnections?.();
   }
 
-  return new Promise((/** @type {(v: { url: string, token: string, close: () => void, closed: Promise<unknown> }) => void} */ resolve, reject) => {
+  /** A live native child owns shutdown; a browser tab still needs idle cleanup.
+   * @param {boolean} managed
+   */
+  function setWindowManaged(managed) { windowManaged = managed; lastBeat = Date.now(); }
+
+  return new Promise((/** @type {(v: { url: string, token: string, close: () => void, closed: Promise<unknown>, setWindowManaged: (managed: boolean) => void }) => void} */ resolve, reject) => {
     server.on('error', reject);
     server.listen(port, '127.0.0.1', () => {
       const { port: p } = /** @type {import('node:net').AddressInfo} */ (server.address());
       // 토큰은 #fragment로 넘겨 서버 로그·Referer에 남지 않게 한다.
-      resolve({ url: `http://127.0.0.1:${p}/#${token}`, token, close, closed });
+      resolve({ url: `http://127.0.0.1:${p}/#${token}`, token, close, closed, setWindowManaged });
     });
   });
 }

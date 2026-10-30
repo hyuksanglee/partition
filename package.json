@@ -1,8 +1,8 @@
 {
   "name": "partition",
-  "version": "0.2.16",
+  "version": "0.3.0",
   "private": true,
-  "description": "Per-project budgets for your Claude plan's 5-hour and weekly usage limits.",
+  "description": "Per-project budgets for Claude and Codex subscription usage limits.",
   "type": "module",
   "license": "MIT",
   "engines": {

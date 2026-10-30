@@ -2,8 +2,16 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+/** @returns {'claude' | 'codex'} */
+export function provider() {
+  const value = process.env.PARTITION_PROVIDER || 'claude';
+  if (value !== 'claude' && value !== 'codex') throw new Error(`Unknown provider: ${value}`);
+  return value;
+}
+
 export function partitionHome() {
-  return process.env.PARTITION_HOME || join(homedir(), '.partition');
+  const base = process.env.PARTITION_HOME || join(homedir(), '.partition');
+  return provider() === 'codex' ? join(base, 'codex') : base;
 }
 
 export const paths = {
@@ -26,4 +34,8 @@ export function claudeDir() {
 
 export function claudeSettingsPath() {
   return join(claudeDir(), 'settings.json');
+}
+
+export function codexHooksPath() {
+  return join(process.env.CODEX_HOME || join(homedir(), '.codex'), 'hooks.json');
 }

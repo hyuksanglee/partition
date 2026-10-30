@@ -1,7 +1,8 @@
 import { WINDOW_KEYS } from '../core/window.mjs';
 import { projectName } from '../project.mjs';
 import { fmtPp, fmtTime, t } from '../messages.mjs';
-import { isConnected } from '../claude/settings.mjs';
+import { isConnected } from './setup.mjs';
+import { provider } from '../store/paths.mjs';
 import { check } from './check.mjs';
 
 const BAR_WIDTH = 24;
@@ -54,7 +55,7 @@ export function status(project, { config, state, lang, nowSec }) {
   const labels = [t(lang, 'status.project'), t(lang, 'status.account')];
   const labelWidth = Math.max(...labels.map(displayWidth)) + 2;
   const unit = t(lang, 'status.unit');
-  const lines = [t(lang, 'status.title', { project: projectName(project) })];
+  const lines = [t(lang, 'status.title', { project: projectName(project) }) + (provider() === 'codex' ? ' · Codex' : '')];
 
   for (const key of WINDOW_KEYS) {
     const w = result.windows[key];
@@ -93,6 +94,7 @@ export function status(project, { config, state, lang, nowSec }) {
       lines.push(`  ${' '.repeat(labelWidth)}${branch} ${pad(String(name), nameWidth)}${fmtPp(Number(v)).padStart(numWidth)}${unit}`);
     });
   }
-  if (!connected) lines.push('', t(lang, 'status.notConnected'));
-  return { text: lines.join('\n'), data: { project, connected, ...result } };
+  if (provider() === 'codex') lines.push('', t(lang, 'codex.connection'));
+  else if (!connected) lines.push('', t(lang, 'status.notConnected'));
+  return { text: lines.join('\n'), data: { project, provider: provider(), connected, lastHookAt: state.lastCodexHookAt ?? null, ...result } };
 }

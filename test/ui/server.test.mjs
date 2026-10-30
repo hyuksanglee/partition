@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { request } from 'node:http';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { useTempHome } from '../helpers.mjs';
 import { startServer } from '../../src/ui/server.mjs';
 
@@ -30,6 +31,7 @@ test('토큰·Host 검사, 예산 저장', async () => {
   const auth = { 'x-partition-token': s.token };
   try {
     assert.equal(/** @type {any} */ (await call(port, '/')).status, 200);
+    assert.equal(/** @type {any} */ (await call(port, '/policy.mjs')).status, 200);
     assert.equal(/** @type {any} */ (await call(port, '/api/state')).status, 403, '토큰 없음');
     assert.equal(/** @type {any} */ (await call(port, '/api/state', { headers: { ...auth, host: 'evil.test' } })).status, 403, 'Host 다름');
 
@@ -47,4 +49,30 @@ test('토큰·Host 검사, 예산 저장', async () => {
     s.close();
     await s.closed;
   }
+});
+
+test('native window stays open without page heartbeats, including during editing or suspension', async () => {
+  const s = await startServer({ project: proj, heartbeatTimeoutMs: 100 });
+  s.setWindowManaged(true);
+  let closed = false;
+  s.closed.then(() => { closed = true; });
+  try {
+    await delay(350); // More than three idle windows without any page requests.
+    assert.equal(closed, false);
+    const port = Number(new URL(s.url).port);
+    assert.equal(/** @type {any} */ (await call(port, '/api/state', { headers: { 'x-partition-token': s.token } })).status, 200);
+  } finally { s.close(); await s.closed; }
+});
+
+test('browser heartbeat works without refreshing state and abandoned browser pages still close', async () => {
+  const s = await startServer({ project: proj, heartbeatTimeoutMs: 250 });
+  const port = Number(new URL(s.url).port);
+  try {
+    for (let i = 0; i < 4; i++) {
+      await delay(100);
+      const response = /** @type {any} */ (await call(port, '/api/heartbeat', { method: 'POST', headers: { 'x-partition-token': s.token }, body: {} }));
+      assert.equal(response.status, 200);
+    }
+    assert.equal(await Promise.race([s.closed.then(() => true), delay(1500).then(() => false)]), true);
+  } finally { s.close(); await s.closed; }
 });

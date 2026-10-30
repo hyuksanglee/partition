@@ -8,7 +8,7 @@
 </head>
 <body>
   <header>
-    <div class="brand">Partition</div>
+    <div class="brand" id="brand">Partition</div>
     <nav role="tablist">
       <button role="tab" data-tab="budget" aria-selected="true" data-i18n="tab.budget"></button>
       <button role="tab" data-tab="rules" aria-selected="false" data-i18n="tab.rules"></button>
@@ -47,6 +47,7 @@
           <span id="range-text"></span>
           <button class="link" id="budget-clear" data-i18n="budget.clear"></button>
         </div>
+        <p id="budget-warning" class="budget-warning" role="status" hidden></p>
         <dl class="stats" id="usage-stats"></dl>
       </div>
       <p class="note small muted" data-i18n="note.attribution"></p>
@@ -82,6 +83,22 @@
     </section>
 
     <section id="tab-connection" role="tabpanel" hidden>
+      <div class="card" id="desktop-connection" hidden>
+        <div class="row between">
+          <strong id="desktop-title"></strong>
+          <button id="desktop-check"></button>
+        </div>
+        <p class="hint" id="desktop-help"></p>
+        <p id="desktop-status" role="status"></p>
+        <pre id="desktop-review"></pre>
+        <label id="desktop-consent-row" hidden>
+          <input type="checkbox" id="desktop-consent">
+          <span id="desktop-consent-text"></span>
+        </label>
+        <div class="row end">
+          <button class="primary" id="desktop-approve" disabled hidden></button>
+        </div>
+      </div>
       <div class="card">
         <div class="row between">
           <strong data-i18n="conn.statusline"></strong>
@@ -106,6 +123,6 @@
   </footer>
 
   <div class="toast" id="toast" role="status" hidden></div>
-  <script src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

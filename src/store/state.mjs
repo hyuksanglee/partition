@@ -10,6 +10,8 @@ import { readJson, withLock, writeJsonAtomic } from './file.mjs';
  * @property {number} offset 여기까지 읽었다(바이트)
  * @property {Record<string, number>} seen 최근 message id → 이미 센 가중 토큰
  * @property {number} touchedAt 마지막으로 읽은 시각(ms). 오래된 커서는 지운다
+ * @property {Record<string, number>} [totals] Codex cumulative token counters
+ * @property {string} [project] Codex transcript owner
  */
 
 /**
@@ -19,6 +21,10 @@ import { readJson, withLock, writeJsonAtomic } from './file.mjs';
  * @property {Record<string, TranscriptCursor>} transcripts
  * @property {number} [lastStatusLineAt] status line이 마지막으로 돈 시각(ms). 연결 확인용
  * @property {number} [lastUsageFetchAt] Stop hook이 /usage로 사용률을 마지막으로 받은 시각(ms)
+ * @property {number} [lastCodexHookAt] Last successful Codex transcript read
+ * @property {'plugin' | 'standalone'} [codexHookSource] Last observed Codex hook source
+ * @property {{ event: string, sessionId: string | null, at: number }} [lastCodexEvent] Last hook invocation (distinct from usage collection)
+ * @property {Partial<Record<import('../core/window.mjs').WindowKey, number>>} [readingAt] Codex reading timestamps (ms)
  */
 
 /**
@@ -26,6 +32,7 @@ import { readJson, withLock, writeJsonAtomic } from './file.mjs';
  * @property {string} [pluginRoot] SessionStart가 기록하는 현재 플러그인 경로
  * @property {{ type: string, command: string, padding?: number } | null} [originalStatusLine] setup 전 값. null이면 원래 없었음
  * @property {boolean} [installed] setup으로 settings.json을 바꿨는지
+ * @property {string[]} [hookCommands] Commands owned by the Codex setup
  */
 
 /** @returns {State} */

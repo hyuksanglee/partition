@@ -1,6 +1,6 @@
 {
   "name": "partition",
   "owner": { "name": "hyuksanglee", "url": "https://github.com/hyuksanglee" },
-  "description": "Partition: per-project usage budgets for Claude Code",
+  "description": "Partition: per-project usage budgets for Claude Code and Codex",
   "plugins": [{ "name": "partition", "source": "." }]
 }

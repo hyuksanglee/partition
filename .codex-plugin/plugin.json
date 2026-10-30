@@ -1,0 +1,8 @@
+{
+  "name": "partition",
+  "version": "0.3.0",
+  "description": "Per-project budgets for Codex subscription usage. Warns, requests wrap-up, and blocks supported prompt/tool paths.",
+  "skills": "./codex-skills/",
+  "hooks": "./hooks/codex.json",
+  "requires_local_executor": true
+}

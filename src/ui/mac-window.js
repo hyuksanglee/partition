@@ -1,5 +1,5 @@
 // macOS 기본 WebKit으로 주소창 없는 작은 창을 띄운다(설치 필요 없음).
-// 실행: osascript -l JavaScript mac-window.js <url> <title> <width> <height>
+// Compiled into Partition.app by mac-app.mjs; arguments follow its executable.
 // 창을 닫으면 이 프로세스가 끝나고, 서버도 따라 종료된다.
 ObjC.import('Cocoa');
 ObjC.import('WebKit');
@@ -13,8 +13,18 @@ function menu(title, items) {
 }
 
 function run(argv) {
-  const [url, title = 'Partition', w = '640', h = '600'] = argv;
+  // Compiled JXA applets receive their CLI arguments through NSProcessInfo.
+  if (!Array.isArray(argv)) argv = ObjC.deepUnwrap($.NSProcessInfo.processInfo.arguments).slice(1);
+  const [url, title = 'Partition', w = '640', h = '600', iconPath] = argv;
+  $.NSProcessInfo.processInfo.processName = $(title);
   const app = $.NSApplication.sharedApplication;
+  let hasPartitionIcon = false;
+  // Claude와 Codex 모두 같은 Partition 아이콘을 사용한다.
+  // Dock에 등록하기 전에 적용해 osascript의 기본 exec 아이콘을 대체한다.
+  if (iconPath) {
+    const icon = $.NSImage.alloc.initWithContentsOfFile($(iconPath));
+    if (!icon.isNil() && icon.isValid) { app.applicationIconImage = icon; hasPartitionIcon = true; }
+  }
   app.setActivationPolicy(0); // Regular: Dock에 보이고 앞으로 나올 수 있음
 
   // 단축키(복사·붙여넣기·닫기·종료)가 동작하려면 메뉴가 있어야 한다.
@@ -61,5 +71,12 @@ function run(argv) {
   win.center;
   win.makeKeyAndOrderFront(null);
   app.activateIgnoringOtherApps(true);
+  if (!win.isVisible) throw new Error('Partition settings window is not visible.');
+  const identity = {
+    name: ObjC.unwrap($.NSRunningApplication.currentApplication.localizedName),
+    bundleId: ObjC.unwrap($.NSBundle.mainBundle.bundleIdentifier),
+    icon: hasPartitionIcon,
+  };
+  $.NSFileHandle.fileHandleWithStandardError.writeData($('PARTITION_WINDOW_READY ' + JSON.stringify(identity) + '\n').dataUsingEncoding($.NSUTF8StringEncoding));
   app.run;
 }

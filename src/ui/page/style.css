@@ -76,6 +76,7 @@ section[hidden] { display: none; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .note { margin: 0; }
+.budget-warning { margin: 0; padding: 10px 12px; border-left: 3px solid var(--danger); border-radius: 4px; background: color-mix(in srgb, var(--danger) 8%, var(--surface)); color: var(--danger); font-size: 13px; }
 
 .segmented { display: inline-flex; background: var(--track); border-radius: 8px; padding: 2px; }
 .segmented button { border: 0; background: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); }
@@ -148,6 +149,11 @@ code, pre {
   background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin: 0;
   white-space: pre-wrap; word-break: break-all;
 }
+
+#desktop-review { max-height: 220px; overflow-y: auto; }
+#desktop-consent-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.6; margin: 12px 0; }
+#desktop-consent-row[hidden] { display: none; }
+#desktop-consent { flex: none; margin-top: 4px; }
 
 button.primary {
   background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px;
