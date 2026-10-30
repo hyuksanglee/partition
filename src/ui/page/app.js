@@ -118,14 +118,17 @@ function renderBar() {
   const free = Math.max(0, 100 - othersTotal - selWidth);
 
   // 할당한 범위는 연하게, 그중 쓴 만큼은 진하게 채운다.
-  const seg = (label, value, color, usedPp, cls = '') => {
+  // 프로젝트 칸을 누르면 그 프로젝트를 고른다(위 선택 상자와 같다).
+  const seg = (label, value, color, usedPp, path, cls = '') => {
     const fill = el('div', { className: 'fill', style: `width:${value > 0 ? Math.min(100, (usedPp / value) * 100) : 0}%;background:${color}` });
     const text = el('span', { textContent: value >= 8 ? label : '' });
-    return el('div', { className: `seg ${cls}`, title: label, style: `width:${value}%;--c:${color}` }, [fill, text]);
+    const node = el('div', { className: `seg pick ${cls}`, title: label, style: `width:${value}%;--c:${color}` }, [fill, text]);
+    node.addEventListener('click', () => selectProject(path));
+    return node;
   };
-  const segs = others.map((p) => seg(`${p.name} ${pp(used(p))}/${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path), used(p)));
+  const segs = others.map((p) => seg(`${p.name} ${pp(used(p))}/${pp(p.budgets[win])}`, p.budgets[win], colors.get(p.path), used(p), p.path));
   const selLabel = mine > 0 ? `${sel.name} ${pp(used(sel))}/${pp(mine)}` : `${sel.name} ${pp(used(sel))}`;
-  if (selWidth > 0) segs.push(seg(selLabel, selWidth, colors.get(sel.path), used(sel), 'selected'));
+  if (selWidth > 0) segs.push(seg(selLabel, selWidth, colors.get(sel.path), used(sel), sel.path, 'selected'));
   // 예산이 없는 사용(기타: 적용 전·미귀속·예산 없는 다른 프로젝트)은 미할당 칸 안에 회색으로 채운다.
   const totalPct = sel.check.windows[win].totalPct;
   const budgetedUsed = [...others, sel].reduce((a, p) => a + used(p), 0);
@@ -143,9 +146,11 @@ function renderBar() {
   mark.style.left = `${othersTotal}%`;
   mark.style.width = `${Math.min(100 - othersTotal, sel.ranges[win].max)}%`;
 
-  const legend = others.map((p) =>
-    el('span', { textContent: `${p.name} ${pp(used(p))}/${ppu(p.budgets[win])}`, style: `--c:${colors.get(p.path)}` }),
-  );
+  const legend = others.map((p) => {
+    const item = el('span', { className: 'pick', textContent: `${p.name} ${pp(used(p))}/${ppu(p.budgets[win])}`, style: `--c:${colors.get(p.path)}` });
+    item.addEventListener('click', () => selectProject(p.path));
+    return item;
+  });
   if (selWidth > 0) {
     const text = mine > 0 ? `${sel.name} ${pp(used(sel))}/${ppu(mine)}` : `${sel.name} ${ppu(used(sel))} (${tr('budget.none')})`;
     legend.push(el('span', { textContent: text, style: `--c:${colors.get(sel.path)}` }));
@@ -199,6 +204,14 @@ function renderBudget() {
       : [[tr('stats.noData'), '']],
   );
   renderBar();
+}
+
+/** 막대 칸·범례·선택 상자에서 프로젝트를 고른다. 저장하지 않은 값은 버린다. */
+function selectProject(path) {
+  if (path === selected) return;
+  selected = path;
+  draft = null;
+  render();
 }
 
 /** 저장하지 않은 값이 있을 때만 저장·취소 버튼을 보인다. */
@@ -387,11 +400,7 @@ function bind() {
       render();
     });
   }
-  $('project-select').addEventListener('change', (e) => {
-    selected = e.target.value;
-    draft = null;
-    render();
-  });
+  $('project-select').addEventListener('change', (e) => selectProject(e.target.value));
   // 움직이는 동안 막대에 바로 반영하고, 저장은 [저장] 버튼을 눌러야 한다.
   const edit = (v) => {
     draft = v;

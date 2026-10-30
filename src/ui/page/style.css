@@ -183,3 +183,8 @@ main { padding-bottom: 72px; }
 .save-bar[hidden] { display: none; }
 .save-bar #save-status { margin-right: auto; }
 button.link:disabled { color: var(--muted); cursor: default; opacity: 0.5; }
+
+/* 눌러서 프로젝트를 고를 수 있는 칸·범례 */
+.pick { cursor: pointer; }
+.seg.pick:not(.selected):hover { filter: brightness(1.08); }
+.legend .pick:hover { color: var(--text); }

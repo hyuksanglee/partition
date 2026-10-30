@@ -1,6 +1,6 @@
 {
   "name": "partition",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Per-project budgets for Claude and Codex subscription usage limits.",
   "type": "module",
