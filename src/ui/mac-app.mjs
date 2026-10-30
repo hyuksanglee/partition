@@ -24,6 +24,7 @@ const INFO = `<?xml version="1.0" encoding="UTF-8"?>
 <key>CFBundleVersion</key><string>1</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>OSAAppletShowStartupScreen</key><false/>
+<key>OSAAppletStayOpen</key><true/>
 </dict></plist>`;
 
 /** @param {string} command @param {string[]} args */

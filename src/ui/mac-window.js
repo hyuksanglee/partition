@@ -14,7 +14,8 @@ function menu(title, items) {
 
 function run(argv) {
   // Compiled JXA applets receive their CLI arguments through NSProcessInfo.
-  if (!Array.isArray(argv)) argv = ObjC.deepUnwrap($.NSProcessInfo.processInfo.arguments).slice(1);
+  const applet = !Array.isArray(argv);
+  if (applet) argv = ObjC.deepUnwrap($.NSProcessInfo.processInfo.arguments).slice(1);
   const [url, title = 'Partition', w = '640', h = '600', iconPath] = argv;
   $.NSProcessInfo.processInfo.processName = $(title);
   const app = $.NSApplication.sharedApplication;
@@ -66,9 +67,26 @@ function run(argv) {
       },
     },
   });
-  win.delegate = $.PartitionWindowDelegate.alloc.init;
+  // delegate는 약한 참조라, run이 끝난 뒤에도 사라지지 않게 전역에 붙잡아 둔다.
+  globalThis.partitionKeep = [win, web, $.PartitionWindowDelegate.alloc.init];
+  win.delegate = globalThis.partitionKeep[2];
 
-  win.center;
+  // 지금 마우스가 있는 화면 가운데에 띄운다. win.center는 다른 모니터에 띄울 때가 있다.
+  const mouse = $.NSEvent.mouseLocation;
+  const screens = $.NSScreen.screens;
+  let screen = $.NSScreen.mainScreen;
+  for (let i = 0; i < screens.count; i++) {
+    const f = screens.objectAtIndex(i).frame;
+    if (mouse.x >= f.origin.x && mouse.x < f.origin.x + f.size.width && mouse.y >= f.origin.y && mouse.y < f.origin.y + f.size.height) {
+      screen = screens.objectAtIndex(i);
+      break;
+    }
+  }
+  const area = screen.visibleFrame;
+  const size = win.frame.size;
+  win.setFrameOrigin($.NSMakePoint(area.origin.x + (area.size.width - size.width) / 2, area.origin.y + (area.size.height - size.height) / 2));
+  // 지금 보고 있는 Space로 옮기고, 전체 화면 앱 위에도 뜨게 한다.
+  win.collectionBehavior = 2 | 256; // moveToActiveSpace | fullScreenAuxiliary
   win.makeKeyAndOrderFront(null);
   app.activateIgnoringOtherApps(true);
   if (!win.isVisible) throw new Error('Partition settings window is not visible.');
@@ -78,5 +96,7 @@ function run(argv) {
     icon: hasPartitionIcon,
   };
   $.NSFileHandle.fileHandleWithStandardError.writeData($('PARTITION_WINDOW_READY ' + JSON.stringify(identity) + '\n').dataUsingEncoding($.NSUTF8StringEncoding));
-  app.run;
+  // 컴파일된 앱(stay-open 애플릿)은 run이 끝난 뒤 자기 이벤트 루프에서 창을 그린다.
+  // 여기서 app.run으로 붙잡고 있으면 창이 만들어지기만 하고 화면에 나오지 않는다.
+  if (!applet) app.run;
 }
